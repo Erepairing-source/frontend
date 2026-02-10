@@ -886,10 +886,10 @@ export default function CityAdminDashboard({ user }) {
                       <Edit size={16} className="mr-2" />
                       Bulk Reassign
                     </Button>
-                    <Button onClick={() => loadDashboardData(localStorage.getItem('token'))}>
-                      <RefreshCw size={16} className="mr-2" />
-                      Refresh
-                    </Button>
+                  <Button onClick={() => loadDashboardData(localStorage.getItem('token'))}>
+                    <RefreshCw size={16} className="mr-2" />
+                    Refresh
+                  </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -1374,10 +1374,10 @@ export default function CityAdminDashboard({ user }) {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Package size={20} />
-                    City Inventory
-                  </CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Package size={20} />
+                  City Inventory
+                </CardTitle>
                   <Button variant="outline" onClick={handleAutoRestock}>
                     Auto Restock
                   </Button>

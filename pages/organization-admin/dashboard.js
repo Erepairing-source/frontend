@@ -3867,7 +3867,7 @@ export default function OrganizationAdminDashboard() {
                             Your Excel file should have the following columns (first row should be headers):
                           </p>
                           <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
-                            <li><strong>product_name</strong> (required) - Product name e.g., "Split AC 1.5T"</li>
+                            <li><strong>product_name</strong> (required) - Product name e.g., &quot;Split AC 1.5T&quot;</li>
                             <li><strong>category</strong> (required) - ac, refrigerator, washing_machine, tv, microwave, air_purifier, water_purifier, other</li>
                             <li><strong>brand</strong> (optional) - Brand name</li>
                             <li><strong>description</strong> (optional) - Product description</li>
@@ -3875,7 +3875,7 @@ export default function OrganizationAdminDashboard() {
                             <li><strong>extended_warranty_available</strong> (optional) - true/false</li>
                             <li><strong>model_number</strong> (optional) - Model number for product model</li>
                             <li><strong>model_name</strong> (optional) - Model name</li>
-                            <li><strong>specifications</strong> (optional) - JSON string e.g., {"{"}capacity: 1.5T{"}"}</li>
+                            <li><strong>specifications</strong> (optional) - JSON string e.g., {'{"capacity": "1.5T"}'}</li>
                             <li><strong>common_failures</strong> (optional) - Comma-separated failures</li>
                             <li><strong>recommended_parts</strong> (optional) - Comma-separated part IDs</li>
                           </ul>
@@ -5690,7 +5690,7 @@ export default function OrganizationAdminDashboard() {
                     rows={8}
                     className="font-mono text-sm"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Enter valid JSON format. Example: {"{"}"warranty_period_months": 12, "conditions": []{"}"}</p>
+                  <p className="text-xs text-gray-500 mt-1">Enter valid JSON format. Example: {'{"warranty_period_months": 12, "conditions": []}'}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch

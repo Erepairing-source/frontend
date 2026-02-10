@@ -348,7 +348,7 @@ export default function SettingsPage() {
           <Settings size={64} className="mx-auto text-gray-400 mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">No Settings Found</h2>
           <p className="text-gray-600 mb-6">
-            Settings haven't been initialized yet. Click the button below to initialize default settings.
+            Settings haven&apos;t been initialized yet. Click the button below to initialize default settings.
           </p>
           <Button onClick={initializeSettings} className="bg-blue-600 hover:bg-blue-700" disabled={saving}>
             {saving ? (
@@ -633,7 +633,7 @@ export default function SettingsPage() {
                   <Settings size={64} className="mx-auto text-gray-400 mb-4" />
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">No Settings Found</h2>
                   <p className="text-gray-600 mb-6">
-                    Settings haven't been loaded. Click the button below to initialize default settings.
+                    Settings haven&apos;t been loaded. Click the button below to initialize default settings.
                   </p>
                   <Button onClick={initializeSettings} className="bg-blue-600 hover:bg-blue-700" disabled={saving}>
                     {saving ? (

@@ -78,7 +78,7 @@ export default function VendorOrganizations() {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">My Organizations</h1>
-              <p className="text-gray-600">View all organizations you've signed up</p>
+              <p className="text-gray-600">View all organizations you&apos;ve signed up</p>
             </div>
           </div>
         </div>

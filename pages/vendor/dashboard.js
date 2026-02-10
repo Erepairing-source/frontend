@@ -113,7 +113,7 @@ export default function VendorDashboard() {
                   Your Signup Link
                 </h3>
                 <p className="text-sm text-gray-600 mb-3">
-                  Share this link with organizations to sign them up. They'll be automatically linked to your vendor account and you'll earn commission.
+                  Share this link with organizations to sign them up. They&apos;ll be automatically linked to your vendor account and you&apos;ll earn commission.
                 </p>
                 <div className="flex items-center gap-2">
                   <Input
@@ -208,7 +208,7 @@ export default function VendorDashboard() {
               <ArrowRight className="text-blue-600" size={20} />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">My Organizations</h3>
-            <p className="text-sm text-gray-600 mb-4">View all organizations you've signed up</p>
+            <p className="text-sm text-gray-600 mb-4">View all organizations you&apos;ve signed up</p>
             <div className="text-2xl font-bold text-blue-600">{statistics.total_organizations}</div>
           </Card>
 
