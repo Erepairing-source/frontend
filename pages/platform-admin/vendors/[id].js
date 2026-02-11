@@ -8,6 +8,7 @@ import {
   Building2, Calendar, Phone, Mail, ArrowLeft,
   TrendingUp, Ticket, Package, CheckCircle2, XCircle
 } from 'lucide-react'
+import { API_BASE } from '../../../lib/api'
 
 export default function VendorDetailPage() {
   const router = useRouter()
@@ -40,7 +41,7 @@ export default function VendorDetailPage() {
     }
     
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/platform-admin/vendors/${id}/details`, {
+      const response = await fetch(`${API_BASE}/platform-admin/vendors/${id}/details`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 

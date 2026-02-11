@@ -8,6 +8,7 @@ import {
   Building2, TrendingUp, DollarSign, Users, Ticket, Package,
   ArrowRight, Eye, Calendar, CreditCard, BarChart3, Settings, Link, Copy
 } from 'lucide-react'
+import { API_BASE } from '../../lib/api'
 
 export default function VendorDashboard() {
   const router = useRouter()
@@ -32,7 +33,7 @@ export default function VendorDashboard() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/vendor/dashboard', {
+      const response = await fetch(API_BASE + '/vendor/dashboard', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 

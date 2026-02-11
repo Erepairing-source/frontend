@@ -12,6 +12,7 @@ import {
 import { Input } from '../../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import { Badge } from '../../components/ui/badge'
+import { API_BASE } from '../../lib/api'
 
 export default function CustomerDashboardEnhanced() {
   const router = useRouter()
@@ -47,7 +48,7 @@ export default function CustomerDashboardEnhanced() {
 
     try {
       // Load tickets
-      const ticketsRes = await fetch('http://localhost:8000/api/v1/tickets/', {
+      const ticketsRes = await fetch(API_BASE + '/tickets/', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (ticketsRes.ok) {
@@ -63,7 +64,7 @@ export default function CustomerDashboardEnhanced() {
       }
 
       // Load devices
-      const devicesRes = await fetch('http://localhost:8000/api/v1/devices/', {
+      const devicesRes = await fetch(API_BASE + '/devices/', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (devicesRes.ok) {
@@ -77,7 +78,7 @@ export default function CustomerDashboardEnhanced() {
       }
 
       // Load notifications
-      const notifRes = await fetch('http://localhost:8000/api/v1/notifications/', {
+      const notifRes = await fetch(API_BASE + '/notifications/', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (notifRes.ok) {

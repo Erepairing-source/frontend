@@ -22,7 +22,7 @@ export default function VendorCommissions() {
   const loadCommissions = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch('http://localhost:8000/api/v1/vendor/commissions', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/vendor/commissions', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 

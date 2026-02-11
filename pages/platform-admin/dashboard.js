@@ -6,6 +6,7 @@ import {
   Building2, CreditCard, Store, BarChart3, Settings,
   Users, TrendingUp, Shield, ArrowRight
 } from 'lucide-react'
+import { API_BASE } from '../../lib/api'
 
 export default function PlatformAdminDashboard({ user }) {
   const router = useRouter()
@@ -27,9 +28,9 @@ export default function PlatformAdminDashboard({ user }) {
     const headers = { 'Authorization': `Bearer ${token}` }
 
     Promise.all([
-      fetch('http://localhost:8000/api/v1/platform-admin/organizations', { headers }),
-      fetch('http://localhost:8000/api/v1/platform-admin/plans', { headers }),
-      fetch('http://localhost:8000/api/v1/platform-admin/vendors', { headers }),
+      fetch(API_BASE + '/platform-admin/organizations', { headers }),
+      fetch(API_BASE + '/platform-admin/plans', { headers }),
+      fetch(API_BASE + '/platform-admin/vendors', { headers }),
     ])
       .then(responses => Promise.all(responses.map(r => r.json())))
       .then(([orgs, plansData, vendorsData]) => {

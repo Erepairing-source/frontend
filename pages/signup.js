@@ -58,7 +58,7 @@ export default function Signup() {
     }
     
     // Load plans
-    fetch('http://localhost:8000/api/v1/platform-admin/plans/public')
+    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/platform-admin/plans/public')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -76,7 +76,7 @@ export default function Signup() {
       })
     
     // Load countries
-    fetch('http://localhost:8000/api/v1/locations/countries')
+    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/locations/countries')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -88,7 +88,7 @@ export default function Signup() {
 
   useEffect(() => {
     if (selectedCountry) {
-      fetch(`http://localhost:8000/api/v1/locations/states?country_id=${selectedCountry}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/locations/states?country_id=${selectedCountry}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -104,7 +104,7 @@ export default function Signup() {
 
   useEffect(() => {
     if (selectedState) {
-      fetch(`http://localhost:8000/api/v1/locations/cities?state_id=${selectedState}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/locations/cities?state_id=${selectedState}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -195,7 +195,7 @@ export default function Signup() {
     delete submitData.admin_confirm_password
     
     try {
-      const response = await fetch('http://localhost:8000/api/v1/signup/', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/signup/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

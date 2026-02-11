@@ -19,7 +19,7 @@ export default function OrganizationsPage() {
     }
 
     const headers = { 'Authorization': `Bearer ${token}` }
-    fetch('http://localhost:8000/api/v1/platform-admin/organizations', { headers })
+    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/platform-admin/organizations', { headers })
       .then(res => res.json())
       .then(data => {
         setOrganizations(data)

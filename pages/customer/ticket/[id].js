@@ -60,7 +60,7 @@ export default function CustomerTicketDetail() {
     const fetchMap = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8000/api/v1/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}`,
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
         const data = await response.json()
@@ -77,7 +77,7 @@ export default function CustomerTicketDetail() {
   const fetchTracking = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}/tracking`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}/tracking`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await response.json()
@@ -95,7 +95,7 @@ export default function CustomerTicketDetail() {
   const fetchEstimate = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}/estimate`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}/estimate`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await response.json()
@@ -110,7 +110,7 @@ export default function CustomerTicketDetail() {
   const fetchAiSummary = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/tickets/summary', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/tickets/summary', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticket_id: parseInt(id) })
@@ -132,7 +132,7 @@ export default function CustomerTicketDetail() {
       const token = localStorage.getItem('token')
       try {
         const params = new URLSearchParams({ address })
-        const response = await fetch(`http://localhost:8000/api/v1/routes/geocode?${params.toString()}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/routes/geocode?${params.toString()}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         const data = await response.json()
@@ -161,7 +161,7 @@ export default function CustomerTicketDetail() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (response.ok) {
@@ -190,7 +190,7 @@ export default function CustomerTicketDetail() {
 
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}/reschedule`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}/reschedule`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -223,7 +223,7 @@ export default function CustomerTicketDetail() {
   const handleSubmitFeedback = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}/feedback`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}/feedback`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -641,7 +641,7 @@ export default function CustomerTicketDetail() {
                         const token = localStorage.getItem('token')
                         try {
                           const params = new URLSearchParams({ address: rescheduleForm.service_address })
-                          const response = await fetch(`http://localhost:8000/api/v1/routes/geocode?${params.toString()}`, {
+                          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/routes/geocode?${params.toString()}`, {
                             headers: { Authorization: `Bearer ${token}` }
                           })
                           const data = await response.json()

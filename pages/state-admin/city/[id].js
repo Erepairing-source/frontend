@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ArrowLeft, Ticket, Users, Package, AlertCircle, MapPin } from 'lucide-react'
 
 const LocationMap = dynamic(() => import('../../../components/LocationMap'), { ssr: false })
+import { API_BASE } from '../../../lib/api'
 
 export default function StateCityDetail() {
   const router = useRouter()
@@ -47,7 +48,7 @@ export default function StateCityDetail() {
     }
 
     try {
-      const citiesRes = await fetch('http://localhost:8000/api/v1/state-admin/cities', {
+      const citiesRes = await fetch(API_BASE + '/state-admin/cities', {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (citiesRes.ok) {
@@ -56,35 +57,35 @@ export default function StateCityDetail() {
         setCity(citiesData.find(c => c.id != null && c.id === numId) || null)
       }
 
-      const ticketsRes = await fetch(`http://localhost:8000/api/v1/tickets?city_id=${cityId}`, {
+      const ticketsRes = await fetch(`${API_BASE}/tickets?city_id=${cityId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (ticketsRes.ok) {
         setTickets(await ticketsRes.json())
       }
 
-      const engineersRes = await fetch(`http://localhost:8000/api/v1/state-admin/cities/${cityId}/engineers`, {
+      const engineersRes = await fetch(`${API_BASE}/state-admin/cities/${cityId}/engineers`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (engineersRes.ok) {
         setEngineers(await engineersRes.json())
       }
 
-      const allEngineersRes = await fetch('http://localhost:8000/api/v1/state-admin/engineers/reallocations', {
+      const allEngineersRes = await fetch(API_BASE + '/state-admin/engineers/reallocations', {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (allEngineersRes.ok) {
         setAllEngineers(await allEngineersRes.json())
       }
 
-      const inventoryRes = await fetch(`http://localhost:8000/api/v1/state-admin/cities/${cityId}/inventory`, {
+      const inventoryRes = await fetch(`${API_BASE}/state-admin/cities/${cityId}/inventory`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (inventoryRes.ok) {
         setInventory(await inventoryRes.json())
       }
 
-      const complaintsRes = await fetch(`http://localhost:8000/api/v1/state-admin/cities/${cityId}/complaints`, {
+      const complaintsRes = await fetch(`${API_BASE}/state-admin/cities/${cityId}/complaints`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (complaintsRes.ok) {
@@ -108,7 +109,7 @@ export default function StateCityDetail() {
     }
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch('http://localhost:8000/api/v1/state-admin/tickets/bulk-reassign', {
+      const response = await fetch(API_BASE + '/state-admin/tickets/bulk-reassign', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -137,7 +138,7 @@ export default function StateCityDetail() {
     if (!selectedComplaint) return
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/state-admin/complaints/${selectedComplaint.id}/follow-up`, {
+      const response = await fetch(`${API_BASE}/state-admin/complaints/${selectedComplaint.id}/follow-up`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -573,7 +574,7 @@ export default function StateCityDetail() {
                     onClick={async () => {
                       const token = localStorage.getItem('token')
                       try {
-                        const response = await fetch(`http://localhost:8000/api/v1/state-admin/cities/${city?.id ?? id}/hq`, {
+                        const response = await fetch(`${API_BASE}/state-admin/cities/${city?.id ?? id}/hq`, {
                           method: 'POST',
                           headers: {
                             Authorization: `Bearer ${token}`,

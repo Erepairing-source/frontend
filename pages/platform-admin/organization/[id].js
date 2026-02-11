@@ -39,7 +39,7 @@ export default function OrganizationDetailPage() {
   const loadOrganizationDetails = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/platform-admin/organizations/${id}/details`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/platform-admin/organizations/${id}/details`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 

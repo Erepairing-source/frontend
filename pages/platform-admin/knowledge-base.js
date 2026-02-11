@@ -24,7 +24,7 @@ export default function PlatformKnowledgeBase() {
       return
     }
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/knowledge-base', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/knowledge-base', {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (response.ok) {
@@ -48,7 +48,7 @@ export default function PlatformKnowledgeBase() {
       return
     }
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/knowledge-base/upsert', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/knowledge-base/upsert', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -78,7 +78,7 @@ export default function PlatformKnowledgeBase() {
     }
     if (!confirm('Delete this entry?')) return
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/ai/knowledge-base/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/ai/knowledge-base/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -97,7 +97,7 @@ export default function PlatformKnowledgeBase() {
       return
     }
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/ai/knowledge-base/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/ai/knowledge-base/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (response.ok) {

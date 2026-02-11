@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
 import FloatingRoleAssistant from '../components/FloatingRoleAssistant'
+import { API_BASE } from '../lib/api'
 
 export default function App({ Component, pageProps }) {
   const [user, setUser] = useState(null)
@@ -14,7 +15,7 @@ export default function App({ Component, pageProps }) {
     const token = localStorage.getItem('token')
     if (token) {
       // Verify token and get user info
-      fetch('http://localhost:8000/api/v1/auth/me', {
+      fetch(API_BASE + '/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

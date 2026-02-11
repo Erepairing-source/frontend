@@ -10,7 +10,7 @@ export default function Pricing() {
   const [billingCycle, setBillingCycle] = useState('monthly')
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/v1/platform-admin/plans/public')
+    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/platform-admin/plans/public')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {

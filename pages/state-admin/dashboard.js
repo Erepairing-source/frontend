@@ -24,6 +24,7 @@ import {
   Building2, 
   X
 } from 'lucide-react'
+import { API_BASE } from '../../lib/api'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
@@ -100,7 +101,7 @@ export default function StateAdminDashboard() {
 
     try {
       // Load state-wide statistics
-      const statsResponse = await fetch(`http://localhost:8000/api/v1/state-admin/dashboard?time_range=${timeRange}`, {
+      const statsResponse = await fetch(`${API_BASE}/state-admin/dashboard?time_range=${timeRange}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -110,7 +111,7 @@ export default function StateAdminDashboard() {
       }
 
       // Load city performance data
-      const citiesResponse = await fetch('http://localhost:8000/api/v1/state-admin/cities', {
+      const citiesResponse = await fetch(API_BASE + '/state-admin/cities', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -120,7 +121,7 @@ export default function StateAdminDashboard() {
       }
 
       // Load engineers for reallocation
-      const engineersRes = await fetch('http://localhost:8000/api/v1/state-admin/engineers/reallocations', {
+      const engineersRes = await fetch(API_BASE + '/state-admin/engineers/reallocations', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (engineersRes.ok) {
@@ -129,7 +130,7 @@ export default function StateAdminDashboard() {
       }
 
       // Load inventory parts - get from all cities in state
-      const inventoryRes = await fetch('http://localhost:8000/api/v1/state-admin/inventory/parts', {
+      const inventoryRes = await fetch(API_BASE + '/state-admin/inventory/parts', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (inventoryRes.ok) {
@@ -171,7 +172,7 @@ export default function StateAdminDashboard() {
     params.append('min_risk', slaRiskFilters.min_risk.toString())
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/state-admin/sla-risk?${params.toString()}`, {
+      const response = await fetch(`${API_BASE}/state-admin/sla-risk?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (response.ok) {
@@ -189,7 +190,7 @@ export default function StateAdminDashboard() {
       return
     }
     try {
-      const response = await fetch('http://localhost:8000/api/v1/state-admin/compliance-alerts', {
+      const response = await fetch(API_BASE + '/state-admin/compliance-alerts', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (response.ok) {
@@ -204,7 +205,7 @@ export default function StateAdminDashboard() {
     const token = localStorage.getItem('token')
     if (!token) return
     try {
-      const response = await fetch('http://localhost:8000/api/v1/state-admin/demand-forecast', {
+      const response = await fetch(API_BASE + '/state-admin/demand-forecast', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (response.ok) {
@@ -219,7 +220,7 @@ export default function StateAdminDashboard() {
     const token = localStorage.getItem('token')
     if (!token) return
     try {
-      const response = await fetch('http://localhost:8000/api/v1/state-admin/training-gaps', {
+      const response = await fetch(API_BASE + '/state-admin/training-gaps', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (response.ok) {
@@ -234,7 +235,7 @@ export default function StateAdminDashboard() {
     const token = localStorage.getItem('token')
     if (!token) return
     try {
-      const response = await fetch('http://localhost:8000/api/v1/state-admin/policy-impact', {
+      const response = await fetch(API_BASE + '/state-admin/policy-impact', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ target_hours: policyTargetHours })
@@ -854,7 +855,7 @@ export default function StateAdminDashboard() {
                     onClick={async () => {
                       const token = localStorage.getItem('token')
                       try {
-                        const response = await fetch('http://localhost:8000/api/v1/state-admin/inventory/transfer', {
+                        const response = await fetch(API_BASE + '/state-admin/inventory/transfer', {
                           method: 'POST',
                           headers: {
                             'Authorization': `Bearer ${token}`,
@@ -960,7 +961,7 @@ export default function StateAdminDashboard() {
                     onClick={async () => {
                       const token = localStorage.getItem('token')
                       try {
-                        const response = await fetch('http://localhost:8000/api/v1/state-admin/engineers/reallocate', {
+                        const response = await fetch(API_BASE + '/state-admin/engineers/reallocate', {
                           method: 'POST',
                           headers: {
                             'Authorization': `Bearer ${token}`,

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Layout from '../components/Layout'
 import Button from '../components/Button'
 import Card from '../components/Card'
+import { API_BASE } from '../lib/api'
 
 export default function Login({ setUser }) {
   const [email, setEmail] = useState('')
@@ -20,7 +21,7 @@ export default function Login({ setUser }) {
     try {
       console.log('Sending login request...', { email, password: '***' })
       
-      const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+      const response = await fetch(API_BASE + '/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

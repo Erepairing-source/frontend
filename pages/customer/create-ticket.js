@@ -35,7 +35,7 @@ export default function CreateTicket() {
     if (!device_id) return
     const token = localStorage.getItem('token')
     if (!token) return
-    fetch(`http://localhost:8000/api/v1/devices/${device_id}`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/devices/${device_id}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => res.ok ? res.json() : null)
@@ -50,7 +50,7 @@ export default function CreateTicket() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) return
-    fetch('http://localhost:8000/api/v1/ai/self-diagnosis/questions', {
+    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/self-diagnosis/questions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({})
@@ -69,7 +69,7 @@ export default function CreateTicket() {
       const token = localStorage.getItem('token')
       try {
         const params = new URLSearchParams({ address })
-        const response = await fetch(`http://localhost:8000/api/v1/routes/geocode?${params.toString()}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/routes/geocode?${params.toString()}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         const data = await response.json()
@@ -93,7 +93,7 @@ export default function CreateTicket() {
     const token = localStorage.getItem('token')
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/tickets/', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/tickets/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -140,7 +140,7 @@ export default function CreateTicket() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/triage', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/triage', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -180,7 +180,7 @@ export default function CreateTicket() {
     }
     setSelfLoading(true)
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/self-diagnosis/assess', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/self-diagnosis/assess', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -392,7 +392,7 @@ export default function CreateTicket() {
                       const token = localStorage.getItem('token')
                       try {
                         const params = new URLSearchParams({ address: formData.service_address })
-                        const response = await fetch(`http://localhost:8000/api/v1/routes/geocode?${params.toString()}`, {
+                        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/routes/geocode?${params.toString()}`, {
                           headers: { Authorization: `Bearer ${token}` }
                         })
                         const data = await response.json()

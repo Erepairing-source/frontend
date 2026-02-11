@@ -23,6 +23,7 @@ import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
+import { API_BASE } from '../../lib/api'
 
 export default function OrganizationAdminDashboard() {
   const router = useRouter()
@@ -208,14 +209,14 @@ export default function OrganizationAdminDashboard() {
   const loadCountries = async () => {
     try {
       // Try API first (comprehensive data), fallback to database
-      const response = await fetch('http://localhost:8000/api/v1/locations/countries?use_api=true')
+      const response = await fetch(API_BASE + '/locations/countries?use_api=true')
       if (response.ok) {
         const data = await response.json()
         console.log('Countries loaded from API:', data.length)
         setCountries(data)
       } else {
         // Fallback to database
-        const dbResponse = await fetch('http://localhost:8000/api/v1/locations/countries')
+        const dbResponse = await fetch(API_BASE + '/locations/countries')
         if (dbResponse.ok) {
           const dbData = await dbResponse.json()
           console.log('Countries loaded from database:', dbData.length)
@@ -226,7 +227,7 @@ export default function OrganizationAdminDashboard() {
       console.error('Error loading countries:', error)
       // Final fallback - try database without API
       try {
-        const dbResponse = await fetch('http://localhost:8000/api/v1/locations/countries')
+        const dbResponse = await fetch(API_BASE + '/locations/countries')
         if (dbResponse.ok) {
           const dbData = await dbResponse.json()
           setCountries(dbData)
@@ -262,7 +263,7 @@ export default function OrganizationAdminDashboard() {
       if (countryCode && countryCode.toUpperCase() === 'IN') {
         try {
           console.log('Loading Indian states from India-specific endpoint...')
-          const response = await fetch('http://localhost:8000/api/v1/locations/india/states?use_api=true')
+          const response = await fetch(API_BASE + '/locations/india/states?use_api=true')
           if (response.ok) {
             const data = await response.json()
             console.log(`✅ Indian states loaded: ${data.length} states/UTs`)
@@ -285,7 +286,7 @@ export default function OrganizationAdminDashboard() {
       // Try CountryStateCity API for other countries
       if (countryCode && typeof countryCode === 'string' && countryCode.length === 2 && countryCode.toUpperCase() !== 'IN') {
         try {
-          const response = await fetch(`http://localhost:8000/api/v1/locations/countries/${countryCode}/states?use_api=true`)
+          const response = await fetch(`${API_BASE}/locations/countries/${countryCode}/states?use_api=true`)
           if (response.ok) {
             const data = await response.json()
             if (data && data.length > 0) {
@@ -304,7 +305,7 @@ export default function OrganizationAdminDashboard() {
       // Fallback to database with use_api=true to trigger India detection
       // The backend will detect India by country_id and use Bharat API
       if (selectedCountry?.id) {
-        const dbResponse = await fetch(`http://localhost:8000/api/v1/locations/states?country_id=${selectedCountry.id}&use_api=true`)
+        const dbResponse = await fetch(`${API_BASE}/locations/states?country_id=${selectedCountry.id}&use_api=true`)
         if (dbResponse.ok) {
           const dbData = await dbResponse.json()
           if (dbData && dbData.length > 0) {
@@ -317,7 +318,7 @@ export default function OrganizationAdminDashboard() {
         }
       } else {
         // Try with the countryId directly, with use_api=true
-        const dbResponse = await fetch(`http://localhost:8000/api/v1/locations/states?country_id=${countryId}&use_api=true`)
+        const dbResponse = await fetch(`${API_BASE}/locations/states?country_id=${countryId}&use_api=true`)
         if (dbResponse.ok) {
           const dbData = await dbResponse.json()
           if (dbData && dbData.length > 0) {
@@ -386,7 +387,7 @@ export default function OrganizationAdminDashboard() {
         if (typeof stateIdOrName === 'string' && !stateIdOrName.startsWith('state-')) {
           // Might be a state name, try India API directly
           try {
-            const response = await fetch(`http://localhost:8000/api/v1/locations/india/states/${encodeURIComponent(stateIdOrName)}/cities?use_api=true`)
+            const response = await fetch(`${API_BASE}/locations/india/states/${encodeURIComponent(stateIdOrName)}/cities?use_api=true`)
             if (response.ok) {
               const data = await response.json()
               if (data && data.length > 0) {
@@ -413,7 +414,7 @@ export default function OrganizationAdminDashboard() {
       if (countryCode && countryCode.toUpperCase() === 'IN' && stateName) {
         try {
           console.log(`Loading Indian cities for state: ${stateName}...`)
-          const response = await fetch(`http://localhost:8000/api/v1/locations/india/states/${encodeURIComponent(stateName)}/cities?use_api=true`)
+          const response = await fetch(`${API_BASE}/locations/india/states/${encodeURIComponent(stateName)}/cities?use_api=true`)
           if (response.ok) {
             const data = await response.json()
             console.log(`✅ Indian cities loaded for ${stateName}: ${data.length} cities`)
@@ -438,7 +439,7 @@ export default function OrganizationAdminDashboard() {
           typeof stateCode === 'string' && stateCode.length >= 2 &&
           countryCode.toUpperCase() !== 'IN') {
         try {
-          const response = await fetch(`http://localhost:8000/api/v1/locations/countries/${countryCode}/states/${stateCode}/cities?use_api=true`)
+          const response = await fetch(`${API_BASE}/locations/countries/${countryCode}/states/${stateCode}/cities?use_api=true`)
           if (response.ok) {
             const data = await response.json()
             if (data && data.length > 0) {
@@ -455,7 +456,7 @@ export default function OrganizationAdminDashboard() {
       
       // Fallback to database - try by state_id if we have it
       if (selectedState?.id) {
-        const dbResponse = await fetch(`http://localhost:8000/api/v1/locations/cities?state_id=${selectedState.id}`)
+        const dbResponse = await fetch(`${API_BASE}/locations/cities?state_id=${selectedState.id}`)
         if (dbResponse.ok) {
           const dbData = await dbResponse.json()
           if (dbData && dbData.length > 0) {
@@ -467,7 +468,7 @@ export default function OrganizationAdminDashboard() {
         }
       } else {
         // Try with the stateId directly
-        const dbResponse = await fetch(`http://localhost:8000/api/v1/locations/cities?state_id=${stateId}`)
+        const dbResponse = await fetch(`${API_BASE}/locations/cities?state_id=${stateId}`)
         if (dbResponse.ok) {
           const dbData = await dbResponse.json()
           if (dbData && dbData.length > 0) {
@@ -503,7 +504,7 @@ export default function OrganizationAdminDashboard() {
 
     try {
       // Load dashboard overview
-      const dashboardRes = await fetch('http://localhost:8000/api/v1/org-admin/dashboard', { headers })
+      const dashboardRes = await fetch(API_BASE + '/org-admin/dashboard', { headers })
       if (dashboardRes.ok) {
         const data = await dashboardRes.json()
         setDashboardData(data)
@@ -511,7 +512,7 @@ export default function OrganizationAdminDashboard() {
 
       // Load tab-specific data
       if (activeTab === 'products') {
-        const productsRes = await fetch('http://localhost:8000/api/v1/org-admin/products', { headers })
+        const productsRes = await fetch(API_BASE + '/org-admin/products', { headers })
         if (productsRes.ok) {
           const data = await productsRes.json()
           setProducts(data)
@@ -519,7 +520,7 @@ export default function OrganizationAdminDashboard() {
           // Load parts for each product
           const partsMap = {}
           for (const product of data) {
-            const partsRes = await fetch(`http://localhost:8000/api/v1/org-admin/products/${product.id}/parts`, { headers })
+            const partsRes = await fetch(`${API_BASE}/org-admin/products/${product.id}/parts`, { headers })
             if (partsRes.ok) {
               const partsData = await partsRes.json()
               partsMap[product.id] = partsData
@@ -530,13 +531,13 @@ export default function OrganizationAdminDashboard() {
       }
 
       if (activeTab === 'sla-policies') {
-        const slaRes = await fetch('http://localhost:8000/api/v1/org-admin/sla-policies', { headers })
+        const slaRes = await fetch(API_BASE + '/org-admin/sla-policies', { headers })
         if (slaRes.ok) {
           const data = await slaRes.json()
           setSlaPolicies(data)
         }
         
-        const serviceRes = await fetch('http://localhost:8000/api/v1/org-admin/service-policies', { headers })
+        const serviceRes = await fetch(API_BASE + '/org-admin/service-policies', { headers })
         if (serviceRes.ok) {
           const data = await serviceRes.json()
           setServicePolicies(data)
@@ -544,7 +545,7 @@ export default function OrganizationAdminDashboard() {
       }
 
       if (activeTab === 'integrations') {
-        const intRes = await fetch('http://localhost:8000/api/v1/org-admin/integrations', { headers })
+        const intRes = await fetch(API_BASE + '/org-admin/integrations', { headers })
         if (intRes.ok) {
           const data = await intRes.json()
           setIntegrations(data)
@@ -552,7 +553,7 @@ export default function OrganizationAdminDashboard() {
       }
 
       if (activeTab === 'partners' && dashboardData?.organization?.org_type === 'oem') {
-        const partnersRes = await fetch('http://localhost:8000/api/v1/org-admin/partners', { headers })
+        const partnersRes = await fetch(API_BASE + '/org-admin/partners', { headers })
         if (partnersRes.ok) {
           const data = await partnersRes.json()
           setPartners(data)
@@ -561,7 +562,7 @@ export default function OrganizationAdminDashboard() {
 
       if (activeTab === 'analytics') {
         try {
-          const analyticsRes = await fetch('http://localhost:8000/api/v1/org-admin/analytics?period=30d', { headers })
+          const analyticsRes = await fetch(API_BASE + '/org-admin/analytics?period=30d', { headers })
           if (analyticsRes.ok) {
             const data = await analyticsRes.json()
             setAnalytics(data)
@@ -580,14 +581,14 @@ export default function OrganizationAdminDashboard() {
 
       if (activeTab === 'users' || activeTab === 'overview') {
         // Load available roles
-        const rolesRes = await fetch('http://localhost:8000/api/v1/users/available-roles', { headers })
+        const rolesRes = await fetch(API_BASE + '/users/available-roles', { headers })
         if (rolesRes.ok) {
           const rolesData = await rolesRes.json()
           setAvailableRoles(rolesData.available_roles || [])
         }
         
         // Load users
-        const usersRes = await fetch('http://localhost:8000/api/v1/users/', { headers })
+        const usersRes = await fetch(API_BASE + '/users/', { headers })
         if (usersRes.ok) {
           const usersData = await usersRes.json()
           setUsers(Array.isArray(usersData) ? usersData : [])
@@ -596,7 +597,7 @@ export default function OrganizationAdminDashboard() {
 
       if (activeTab === 'inventory') {
         // Load parts
-        const partsRes = await fetch('http://localhost:8000/api/v1/org-admin/inventory/parts', { headers })
+        const partsRes = await fetch(API_BASE + '/org-admin/inventory/parts', { headers })
         if (partsRes.ok) {
           const partsData = await partsRes.json()
           setParts(Array.isArray(partsData) ? partsData : [])
@@ -605,7 +606,7 @@ export default function OrganizationAdminDashboard() {
         }
 
         // Load inventory stock
-        const inventoryRes = await fetch('http://localhost:8000/api/v1/org-admin/inventory/stock', { headers })
+        const inventoryRes = await fetch(API_BASE + '/org-admin/inventory/stock', { headers })
         if (inventoryRes.ok) {
           const inventoryData = await inventoryRes.json()
           setInventory(Array.isArray(inventoryData) ? inventoryData : [])
@@ -614,7 +615,7 @@ export default function OrganizationAdminDashboard() {
         }
 
         // Load transactions
-        const transactionsRes = await fetch('http://localhost:8000/api/v1/org-admin/inventory/transactions?limit=50', { headers })
+        const transactionsRes = await fetch(API_BASE + '/org-admin/inventory/transactions?limit=50', { headers })
         if (transactionsRes.ok) {
           const transactionsData = await transactionsRes.json()
           setTransactions(Array.isArray(transactionsData) ? transactionsData : (transactionsData?.transactions || []))
@@ -623,7 +624,7 @@ export default function OrganizationAdminDashboard() {
         }
 
         // Load reorder requests
-        const reorderRes = await fetch('http://localhost:8000/api/v1/org-admin/inventory/reorder-requests', { headers })
+        const reorderRes = await fetch(API_BASE + '/org-admin/inventory/reorder-requests', { headers })
         if (reorderRes.ok) {
           const reorderData = await reorderRes.json()
           setReorderRequests(Array.isArray(reorderData) ? reorderData : (reorderData?.requests || []))
@@ -632,12 +633,12 @@ export default function OrganizationAdminDashboard() {
         }
       }
 
-      const costRes = await fetch('http://localhost:8000/api/v1/org-admin/ai/cost-to-serve', { headers })
+      const costRes = await fetch(API_BASE + '/org-admin/ai/cost-to-serve', { headers })
       if (costRes.ok) {
         setAiCostToServe(await costRes.json())
       }
 
-      const invRes = await fetch('http://localhost:8000/api/v1/org-admin/ai/inventory-forecast', { headers })
+      const invRes = await fetch(API_BASE + '/org-admin/ai/inventory-forecast', { headers })
       if (invRes.ok) {
         setAiInventoryForecast(await invRes.json())
       }
@@ -656,7 +657,7 @@ export default function OrganizationAdminDashboard() {
       return
     }
     try {
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/ai/route-optimizer', {
+      const response = await fetch(API_BASE + '/org-admin/ai/route-optimizer', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineer_id: parseInt(aiRouteEngineerId) })
@@ -683,8 +684,8 @@ export default function OrganizationAdminDashboard() {
     
     try {
       const url = editingProduct 
-        ? `http://localhost:8000/api/v1/org-admin/products/${editingProduct.id}`
-        : 'http://localhost:8000/api/v1/org-admin/products'
+        ? `${API_BASE}/org-admin/products/${editingProduct.id}`
+        : API_BASE + '/org-admin/products'
       const method = editingProduct ? 'PUT' : 'POST'
       
       // Prepare data - ensure specifications is an object, not a string
@@ -814,7 +815,7 @@ export default function OrganizationAdminDashboard() {
       const formData = new FormData()
       formData.append('file', bulkProductFile)
 
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/products/bulk-upload', {
+      const response = await fetch(API_BASE + '/org-admin/products/bulk-upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -851,7 +852,7 @@ export default function OrganizationAdminDashboard() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/products/bulk-upload-template', {
+      const response = await fetch(API_BASE + '/org-admin/products/bulk-upload-template', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -883,7 +884,7 @@ export default function OrganizationAdminDashboard() {
     
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/org-admin/products/${productId}`, {
+      const response = await fetch(`${API_BASE}/org-admin/products/${productId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -906,8 +907,8 @@ export default function OrganizationAdminDashboard() {
     const token = localStorage.getItem('token')
     try {
       const url = editingSLA 
-        ? `http://localhost:8000/api/v1/org-admin/sla-policies/${editingSLA.id}`
-        : 'http://localhost:8000/api/v1/org-admin/sla-policies'
+        ? `${API_BASE}/org-admin/sla-policies/${editingSLA.id}`
+        : API_BASE + '/org-admin/sla-policies'
       const method = editingSLA ? 'PUT' : 'POST'
       
       const response = await fetch(url, {
@@ -958,7 +959,7 @@ export default function OrganizationAdminDashboard() {
     
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/org-admin/sla-policies/${policyId}`, {
+      const response = await fetch(`${API_BASE}/org-admin/sla-policies/${policyId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1021,8 +1022,8 @@ export default function OrganizationAdminDashboard() {
       }
 
       const url = editingUser 
-        ? `http://localhost:8000/api/v1/users/${editingUser.id}`
-        : 'http://localhost:8000/api/v1/users/'
+        ? `${API_BASE}/users/${editingUser.id}`
+        : API_BASE + '/users/'
       const method = editingUser ? 'PUT' : 'POST'
       
       // Convert location IDs to integers
@@ -1164,8 +1165,8 @@ export default function OrganizationAdminDashboard() {
     
     try {
       const url = editingServicePolicy 
-        ? `http://localhost:8000/api/v1/org-admin/service-policies/${editingServicePolicy.id}`
-        : 'http://localhost:8000/api/v1/org-admin/service-policies'
+        ? `${API_BASE}/org-admin/service-policies/${editingServicePolicy.id}`
+        : API_BASE + '/org-admin/service-policies'
       const method = editingServicePolicy ? 'PUT' : 'POST'
       
       const response = await fetch(url, {
@@ -1218,7 +1219,7 @@ export default function OrganizationAdminDashboard() {
     
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/org-admin/service-policies/${policyId}`, {
+      const response = await fetch(`${API_BASE}/org-admin/service-policies/${policyId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1264,8 +1265,8 @@ export default function OrganizationAdminDashboard() {
     
     try {
       const url = editingIntegration 
-        ? `http://localhost:8000/api/v1/org-admin/integrations/${editingIntegration.id}`
-        : 'http://localhost:8000/api/v1/org-admin/integrations'
+        ? `${API_BASE}/org-admin/integrations/${editingIntegration.id}`
+        : API_BASE + '/org-admin/integrations'
       const method = editingIntegration ? 'PUT' : 'POST'
       
       if (integrationForm.integration_type === 'api') {
@@ -1352,7 +1353,7 @@ export default function OrganizationAdminDashboard() {
     
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/org-admin/integrations/${integrationId}`, {
+      const response = await fetch(`${API_BASE}/org-admin/integrations/${integrationId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1380,7 +1381,7 @@ export default function OrganizationAdminDashboard() {
     }
     
     try {
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/inventory/parts', {
+      const response = await fetch(API_BASE + '/org-admin/inventory/parts', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1424,7 +1425,7 @@ export default function OrganizationAdminDashboard() {
     }
     
     try {
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/inventory/stock', {
+      const response = await fetch(API_BASE + '/org-admin/inventory/stock', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1491,7 +1492,7 @@ export default function OrganizationAdminDashboard() {
       const formData = new FormData()
       formData.append('file', bulkPartFile)
 
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/inventory/parts/bulk-upload', {
+      const response = await fetch(API_BASE + '/org-admin/inventory/parts/bulk-upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1526,7 +1527,7 @@ export default function OrganizationAdminDashboard() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/inventory/parts/bulk-upload-template', {
+      const response = await fetch(API_BASE + '/org-admin/inventory/parts/bulk-upload-template', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -1585,7 +1586,7 @@ export default function OrganizationAdminDashboard() {
       const formData = new FormData()
       formData.append('file', bulkInventoryFile)
 
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/inventory/stock/bulk-upload', {
+      const response = await fetch(API_BASE + '/org-admin/inventory/stock/bulk-upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1620,7 +1621,7 @@ export default function OrganizationAdminDashboard() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/inventory/stock/bulk-upload-template', {
+      const response = await fetch(API_BASE + '/org-admin/inventory/stock/bulk-upload-template', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -1650,7 +1651,7 @@ export default function OrganizationAdminDashboard() {
   const loadAvailablePlans = async () => {
     setLoadingPlans(true)
     try {
-      const response = await fetch('http://localhost:8000/api/v1/platform-admin/plans/public')
+      const response = await fetch(API_BASE + '/platform-admin/plans/public')
       if (response.ok) {
         const data = await response.json()
         setAvailablePlans(Array.isArray(data) ? data : [])
@@ -1675,7 +1676,7 @@ export default function OrganizationAdminDashboard() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/subscription/upgrade', {
+      const response = await fetch(API_BASE + '/org-admin/subscription/upgrade', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1713,7 +1714,7 @@ export default function OrganizationAdminDashboard() {
     }
     
     try {
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/partners', {
+      const response = await fetch(API_BASE + '/org-admin/partners', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1785,7 +1786,7 @@ export default function OrganizationAdminDashboard() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/org-admin/inventory/reorder-requests', {
+      const response = await fetch(API_BASE + '/org-admin/inventory/reorder-requests', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1800,7 +1801,7 @@ export default function OrganizationAdminDashboard() {
       if (response.ok) {
         alert('Reorder request created successfully!')
         // Reload reorder requests
-        const reorderRes = await fetch('http://localhost:8000/api/v1/org-admin/inventory/reorder-requests', {
+        const reorderRes = await fetch(API_BASE + '/org-admin/inventory/reorder-requests', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -1810,7 +1811,7 @@ export default function OrganizationAdminDashboard() {
           setReorderRequests(Array.isArray(reorderData) ? reorderData : (reorderData?.requests || []))
         }
         // Reload inventory to update low stock status
-        const inventoryRes = await fetch('http://localhost:8000/api/v1/org-admin/inventory/stock', {
+        const inventoryRes = await fetch(API_BASE + '/org-admin/inventory/stock', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -1841,7 +1842,7 @@ export default function OrganizationAdminDashboard() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/org-admin/inventory/reorder-requests/${requestId}/approve`, {
+      const response = await fetch(`${API_BASE}/org-admin/inventory/reorder-requests/${requestId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1852,7 +1853,7 @@ export default function OrganizationAdminDashboard() {
       if (response.ok) {
         alert('Reorder request approved successfully!')
         // Reload reorder requests
-        const reorderRes = await fetch('http://localhost:8000/api/v1/org-admin/inventory/reorder-requests', {
+        const reorderRes = await fetch(API_BASE + '/org-admin/inventory/reorder-requests', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -1884,7 +1885,7 @@ export default function OrganizationAdminDashboard() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/org-admin/inventory/reorder-requests/${requestId}/reject`, {
+      const response = await fetch(`${API_BASE}/org-admin/inventory/reorder-requests/${requestId}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1898,7 +1899,7 @@ export default function OrganizationAdminDashboard() {
       if (response.ok) {
         alert('Reorder request rejected')
         // Reload reorder requests
-        const reorderRes = await fetch('http://localhost:8000/api/v1/org-admin/inventory/reorder-requests', {
+        const reorderRes = await fetch(API_BASE + '/org-admin/inventory/reorder-requests', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -1934,7 +1935,7 @@ export default function OrganizationAdminDashboard() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/org-admin/inventory/reorder-requests/${requestId}/fulfill`, {
+      const response = await fetch(`${API_BASE}/org-admin/inventory/reorder-requests/${requestId}/fulfill`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1948,7 +1949,7 @@ export default function OrganizationAdminDashboard() {
       if (response.ok) {
         alert('Reorder request fulfilled and stock updated!')
         // Reload data
-        const reorderRes = await fetch('http://localhost:8000/api/v1/org-admin/inventory/reorder-requests', {
+        const reorderRes = await fetch(API_BASE + '/org-admin/inventory/reorder-requests', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -1958,7 +1959,7 @@ export default function OrganizationAdminDashboard() {
           setReorderRequests(Array.isArray(reorderData) ? reorderData : (reorderData?.requests || []))
         }
         // Reload inventory
-        const inventoryRes = await fetch('http://localhost:8000/api/v1/org-admin/inventory/stock', {
+        const inventoryRes = await fetch(API_BASE + '/org-admin/inventory/stock', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -1968,7 +1969,7 @@ export default function OrganizationAdminDashboard() {
           setInventory(Array.isArray(inventoryData) ? inventoryData : [])
         }
         // Reload transactions
-        const transactionsRes = await fetch('http://localhost:8000/api/v1/org-admin/inventory/transactions?limit=50', {
+        const transactionsRes = await fetch(API_BASE + '/org-admin/inventory/transactions?limit=50', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -1995,7 +1996,7 @@ export default function OrganizationAdminDashboard() {
     }
     
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/org-admin/inventory/stock/${selectedInventory.id}/adjust`, {
+      const response = await fetch(`${API_BASE}/org-admin/inventory/stock/${selectedInventory.id}/adjust`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -2028,7 +2029,7 @@ export default function OrganizationAdminDashboard() {
     
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/org-admin/products/${selectedProduct.id}/parts`, {
+      const response = await fetch(`${API_BASE}/org-admin/products/${selectedProduct.id}/parts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -2061,7 +2062,7 @@ export default function OrganizationAdminDashboard() {
     
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/org-admin/products/${productId}/parts/${partId}`, {
+      const response = await fetch(`${API_BASE}/org-admin/products/${productId}/parts/${partId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -3180,7 +3181,7 @@ export default function OrganizationAdminDashboard() {
                                 onClick={async () => {
                                   const token = localStorage.getItem('token')
                                   try {
-                                    const response = await fetch('http://localhost:8000/api/v1/warranty/sync-all', {
+                                    const response = await fetch(API_BASE + '/warranty/sync-all', {
                                       method: 'POST',
                                       headers: {
                                         'Authorization': `Bearer ${token}`,
@@ -3209,7 +3210,7 @@ export default function OrganizationAdminDashboard() {
                                 const token = localStorage.getItem('token')
                                 try {
                                   const response = await fetch(
-                                    `http://localhost:8000/api/v1/org-admin/integrations/${integration.id}`,
+                                    `${API_BASE}/org-admin/integrations/${integration.id}`,
                                     {
                                       method: 'PUT',
                                       headers: {
@@ -3458,7 +3459,7 @@ export default function OrganizationAdminDashboard() {
                       const token = localStorage.getItem('token')
                       if (!token) return
                       try {
-                        const analyticsRes = await fetch(`http://localhost:8000/api/v1/org-admin/analytics?period=${value}`, {
+                        const analyticsRes = await fetch(`${API_BASE}/org-admin/analytics?period=${value}`, {
                           headers: {
                             'Authorization': `Bearer ${token}`
                           }

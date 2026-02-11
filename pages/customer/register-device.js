@@ -93,8 +93,8 @@ export default function RegisterDevice() {
       const useUploadEndpoint = !!invoiceFile || !!deviceFile
       const response = await fetch(
         useUploadEndpoint
-          ? 'http://localhost:8000/api/v1/devices/register-with-files'
-          : 'http://localhost:8000/api/v1/devices/',
+          ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/devices/register-with-files'
+          : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/devices/',
         useUploadEndpoint
           ? {
               method: 'POST',
@@ -193,7 +193,7 @@ export default function RegisterDevice() {
       const formData = new FormData()
       formData.append('file', bulkFile)
 
-      const response = await fetch('http://localhost:8000/api/v1/devices/bulk-register', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/devices/bulk-register', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -228,7 +228,7 @@ export default function RegisterDevice() {
     try {
       const fd = new FormData()
       fd.append('qr_image', qrImageFile)
-      const response = await fetch('http://localhost:8000/api/v1/devices/qr-decode', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/devices/qr-decode', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: fd

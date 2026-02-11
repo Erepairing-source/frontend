@@ -27,7 +27,7 @@ export default function PlansPage() {
     const token = localStorage.getItem('token')
     if (!token) return
 
-    fetch('http://localhost:8000/api/v1/platform-admin/plans', {
+    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/platform-admin/plans', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -57,8 +57,8 @@ export default function PlansPage() {
 
     try {
       const url = selectedPlan
-        ? `http://localhost:8000/api/v1/platform-admin/plans/${selectedPlan.id}`
-        : 'http://localhost:8000/api/v1/platform-admin/plans'
+        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/platform-admin/plans/${selectedPlan.id}`
+        : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/platform-admin/plans'
       
       const method = selectedPlan ? 'PUT' : 'POST'
 
@@ -92,7 +92,7 @@ export default function PlansPage() {
     if (!token) return
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/platform-admin/plans/${planId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/platform-admin/plans/${planId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -113,7 +113,7 @@ export default function PlansPage() {
     if (!token) return
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/platform-admin/plans/${plan.id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/platform-admin/plans/${plan.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

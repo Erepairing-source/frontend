@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Label } from '../../components/ui/label'
 import { Badge } from '../../components/ui/badge'
 import { X } from 'lucide-react'
+import { API_BASE } from '../../lib/api'
 
 export default function StatePolicies() {
   const router = useRouter()
@@ -29,14 +30,14 @@ export default function StatePolicies() {
       return
     }
     try {
-      const policiesRes = await fetch('http://localhost:8000/api/v1/state-admin/sla-policies', {
+      const policiesRes = await fetch(API_BASE + '/state-admin/sla-policies', {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (policiesRes.ok) {
         setPolicies(await policiesRes.json())
       }
 
-      const citiesRes = await fetch('http://localhost:8000/api/v1/state-admin/cities', {
+      const citiesRes = await fetch(API_BASE + '/state-admin/cities', {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (citiesRes.ok) {
@@ -58,8 +59,8 @@ export default function StatePolicies() {
     if (!token) return
     try {
       const url = editingPolicy
-        ? `http://localhost:8000/api/v1/state-admin/sla-policies/${editingPolicy.id}`
-        : 'http://localhost:8000/api/v1/state-admin/sla-policies'
+        ? `${API_BASE}/state-admin/sla-policies/${editingPolicy.id}`
+        : API_BASE + '/state-admin/sla-policies'
       const method = editingPolicy ? 'PUT' : 'POST'
       const payload = {
         ...form,
@@ -93,7 +94,7 @@ export default function StatePolicies() {
     if (!token) return
     if (!confirm('Delete this policy?')) return
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/state-admin/sla-policies/${policyId}`, {
+      const response = await fetch(`${API_BASE}/state-admin/sla-policies/${policyId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })

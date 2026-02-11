@@ -22,7 +22,7 @@ export default function CustomerDeviceDetail() {
       }
 
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/devices/${id}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/devices/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         if (response.ok) {
@@ -164,7 +164,7 @@ export default function CustomerDeviceDetail() {
                       }
                       setSyncing(true)
                       try {
-                        const response = await fetch('http://localhost:8000/api/v1/warranty/sync', {
+                        const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/warranty/sync', {
                           method: 'POST',
                           headers: {
                             Authorization: `Bearer ${token}`,

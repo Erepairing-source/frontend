@@ -25,7 +25,7 @@ export default function VendorOrganizationDetails() {
   const loadOrganizationDetails = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/vendor/organizations/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/vendor/organizations/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 

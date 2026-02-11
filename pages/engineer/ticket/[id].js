@@ -44,7 +44,7 @@ export default function EngineerTicketDetail() {
     if (!id) return
 
     const token = localStorage.getItem('token')
-    fetch(`http://localhost:8000/api/v1/tickets/${id}`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -74,8 +74,8 @@ export default function EngineerTicketDetail() {
     const token = localStorage.getItem('token')
     const cityId = ticket.city_id
     const url = cityId
-      ? `http://localhost:8000/api/v1/inventory/stock?city_id=${cityId}`
-      : 'http://localhost:8000/api/v1/inventory/stock'
+      ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/inventory/stock?city_id=${cityId}`
+      : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/inventory/stock'
     fetch(url, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -92,27 +92,27 @@ export default function EngineerTicketDetail() {
     const fetchAi = async () => {
       try {
         const [summaryRes, checklistRes, partsRes, riskRes, satisfactionRes] = await Promise.all([
-          fetch('http://localhost:8000/api/v1/ai/tickets/summary', {
+          fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/tickets/summary', {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ ticket_id: ticket.id })
           }),
-          fetch('http://localhost:8000/api/v1/ai/tickets/checklist', {
+          fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/tickets/checklist', {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ ticket_id: ticket.id })
           }),
-          fetch('http://localhost:8000/api/v1/ai/tickets/parts-suggestions', {
+          fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/tickets/parts-suggestions', {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ ticket_id: ticket.id })
           }),
-          fetch('http://localhost:8000/api/v1/ai/tickets/sla-risk', {
+          fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/tickets/sla-risk', {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ ticket_id: ticket.id })
           }),
-          fetch('http://localhost:8000/api/v1/ai/tickets/satisfaction-risk', {
+          fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/tickets/satisfaction-risk', {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ ticket_id: ticket.id })
@@ -133,7 +133,7 @@ export default function EngineerTicketDetail() {
   const generateAutoNotes = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/tickets/auto-notes', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/tickets/auto-notes', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticket_id: ticket.id })
@@ -150,7 +150,7 @@ export default function EngineerTicketDetail() {
   const checkPhotoQuality = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/photos/quality', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/photos/quality', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ urls: [...(ticket.issue_photos || []), ...(resolutionPhotos || [])] })
@@ -168,7 +168,7 @@ export default function EngineerTicketDetail() {
 
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/copilot/query', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/copilot/query', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -195,7 +195,7 @@ export default function EngineerTicketDetail() {
 
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}/resolve`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}/resolve`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -226,7 +226,7 @@ export default function EngineerTicketDetail() {
     navigator.geolocation.getCurrentPosition(async (position) => {
       const token = localStorage.getItem('token')
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}/arrival`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}/arrival`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -257,7 +257,7 @@ export default function EngineerTicketDetail() {
     navigator.geolocation.getCurrentPosition(async (position) => {
       const token = localStorage.getItem('token')
       try {
-        const response = await fetch('http://localhost:8000/api/v1/users/me/location', {
+        const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/users/me/location', {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -283,7 +283,7 @@ export default function EngineerTicketDetail() {
   const startJobWithEta = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}/start`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}/start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -295,7 +295,7 @@ export default function EngineerTicketDetail() {
         })
       })
       if (response.ok) {
-        const refreshed = await fetch(`http://localhost:8000/api/v1/tickets/${id}`, {
+        const refreshed = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await refreshed.json()
@@ -334,7 +334,7 @@ export default function EngineerTicketDetail() {
     const formData = new FormData()
     formData.append('photo', resolutionPhotoFile)
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}/resolution-photo`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}/resolution-photo`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
@@ -360,7 +360,7 @@ export default function EngineerTicketDetail() {
     const formData = new FormData()
     formData.append('photo', partPhotoFile)
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}/parts/photo`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}/parts/photo`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
@@ -384,7 +384,7 @@ export default function EngineerTicketDetail() {
     const token = localStorage.getItem('token')
     setPartsRequestLoading(true)
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}/parts/request`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}/parts/request`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -412,7 +412,7 @@ export default function EngineerTicketDetail() {
     }
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${id}/escalate`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${id}/escalate`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -451,7 +451,7 @@ export default function EngineerTicketDetail() {
           dest_lat: ticket.service_latitude,
           dest_lng: ticket.service_longitude
         })
-        const response = await fetch(`http://localhost:8000/api/v1/routes/directions?${params.toString()}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/routes/directions?${params.toString()}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         const data = await response.json()
@@ -459,7 +459,7 @@ export default function EngineerTicketDetail() {
           setRouteError(data.detail || 'Unable to fetch route')
         } else {
           setRouteInfo(data)
-          const mapRes = await fetch(`http://localhost:8000/api/v1/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}`, {
+          const mapRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}`, {
             headers: { Authorization: `Bearer ${token}` }
           })
           const mapData = await mapRes.json()

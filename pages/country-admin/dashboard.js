@@ -9,6 +9,7 @@ import {
   Clock, CheckCircle2, XCircle, Activity, Zap, DollarSign, MessageSquare
 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+import { API_BASE } from '../../lib/api'
 
 export default function CountryAdminDashboard() {
   const router = useRouter()
@@ -44,7 +45,7 @@ export default function CountryAdminDashboard() {
 
     try {
       // Load national statistics
-      const statsResponse = await fetch(`http://localhost:8000/api/v1/country-admin/dashboard?time_range=${timeRange}`, {
+      const statsResponse = await fetch(`${API_BASE}/country-admin/dashboard?time_range=${timeRange}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -54,7 +55,7 @@ export default function CountryAdminDashboard() {
       }
 
       // Load state performance data
-      const statesResponse = await fetch('http://localhost:8000/api/v1/country-admin/states', {
+      const statesResponse = await fetch(API_BASE + '/country-admin/states', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -64,7 +65,7 @@ export default function CountryAdminDashboard() {
       }
 
       // Load partner performance data
-      const partnersResponse = await fetch('http://localhost:8000/api/v1/country-admin/partners', {
+      const partnersResponse = await fetch(API_BASE + '/country-admin/partners', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -74,21 +75,21 @@ export default function CountryAdminDashboard() {
       }
 
       // Load warranty abuse signals
-      const warrantyResponse = await fetch('http://localhost:8000/api/v1/country-admin/warranty-abuse', {
+      const warrantyResponse = await fetch(API_BASE + '/country-admin/warranty-abuse', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (warrantyResponse.ok) {
         setWarrantyAlerts(await warrantyResponse.json())
       }
 
-      const warrantyProductRes = await fetch('http://localhost:8000/api/v1/country-admin/warranty-abuse/products', {
+      const warrantyProductRes = await fetch(API_BASE + '/country-admin/warranty-abuse/products', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (warrantyProductRes.ok) {
         setWarrantyByProduct(await warrantyProductRes.json())
       }
 
-      const defectRes = await fetch('http://localhost:8000/api/v1/country-admin/oem-defects', {
+      const defectRes = await fetch(API_BASE + '/country-admin/oem-defects', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (defectRes.ok) {

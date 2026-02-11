@@ -20,7 +20,7 @@ export default function EngineerDashboard({ user }) {
       return
     }
 
-    fetch('http://localhost:8000/api/v1/tickets/?assigned_to_me=true', {
+    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/tickets/?assigned_to_me=true', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -35,7 +35,7 @@ export default function EngineerDashboard({ user }) {
         setLoading(false)
       })
 
-    fetch('http://localhost:8000/api/v1/users/me', {
+    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/users/me', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -70,7 +70,7 @@ export default function EngineerDashboard({ user }) {
               dest_lat: ticket.service_latitude,
               dest_lng: ticket.service_longitude
             })
-            const response = await fetch(`http://localhost:8000/api/v1/routes/directions?${params.toString()}`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/routes/directions?${params.toString()}`, {
               headers: { Authorization: `Bearer ${token}` }
             })
             const data = await response.json()
@@ -113,7 +113,7 @@ export default function EngineerDashboard({ user }) {
   const startTicket = async (ticketId) => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tickets/${ticketId}/start`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/tickets/${ticketId}/start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -221,7 +221,7 @@ export default function EngineerDashboard({ user }) {
               return
             }
             try {
-              const response = await fetch('http://localhost:8000/api/v1/tickets/assigned/calendar', {
+              const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/tickets/assigned/calendar', {
                 headers: { Authorization: `Bearer ${token}` }
               })
               if (response.ok) {
@@ -343,7 +343,7 @@ export default function EngineerDashboard({ user }) {
                     <p className="text-sm text-gray-600">{ticket.service_address || 'No address provided'}</p>
                     {ticket.service_latitude && ticket.service_longitude && (
                       <img
-                        src={`http://localhost:8000/api/v1/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}&zoom=13`}
+                        src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}&zoom=13`}
                         alt="Map thumbnail"
                         className="mt-2 h-16 w-28 rounded border object-cover"
                       />
@@ -413,7 +413,7 @@ export default function EngineerDashboard({ user }) {
                                 size="sm"
                                 onClick={() => {
                                   window.open(
-                                    `http://localhost:8000/api/v1/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}`,
+                                    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}`,
                                     '_blank'
                                   )
                                 }}
@@ -440,7 +440,7 @@ export default function EngineerDashboard({ user }) {
                                         dest_lat: ticket.service_latitude,
                                         dest_lng: ticket.service_longitude
                                       })
-                                      const response = await fetch(`http://localhost:8000/api/v1/routes/directions?${params.toString()}`, {
+                                      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/routes/directions?${params.toString()}`, {
                                         headers: { Authorization: `Bearer ${token}` }
                                       })
                                       const data = await response.json()

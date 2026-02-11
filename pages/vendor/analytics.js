@@ -30,7 +30,7 @@ export default function VendorAnalytics() {
   const loadAnalytics = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch('http://localhost:8000/api/v1/vendor/analytics', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/vendor/analytics', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 

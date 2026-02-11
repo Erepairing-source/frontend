@@ -4,6 +4,7 @@ import Card from '../../components/Card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { ArrowLeft, Building2, Eye, Search, DollarSign, Calendar, CheckCircle, XCircle } from 'lucide-react'
+import { API_BASE } from '../../lib/api'
 
 export default function VendorOrganizations() {
   const router = useRouter()
@@ -24,7 +25,7 @@ export default function VendorOrganizations() {
   const loadOrganizations = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch('http://localhost:8000/api/v1/vendor/organizations', {
+      const response = await fetch(API_BASE + '/vendor/organizations', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 

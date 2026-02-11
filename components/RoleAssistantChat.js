@@ -29,7 +29,7 @@ export default function RoleAssistantChat({ role, page, title = 'AI Role Assista
             return
           }
         }
-        const response = await fetch('http://localhost:8000/api/v1/ai/chatbot/reschedule', {
+        const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/chatbot/reschedule', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -46,7 +46,7 @@ export default function RoleAssistantChat({ role, page, title = 'AI Role Assista
         setLoading(false)
         return
       }
-      const response = await fetch('http://localhost:8000/api/v1/ai/role-assistant', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/ai/role-assistant', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
