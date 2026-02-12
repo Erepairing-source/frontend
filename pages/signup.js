@@ -7,11 +7,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../components/ui/textarea'
 import { Card } from '../components/ui/card'
 import { CheckCircle2, Loader2, Building2, User, MapPin, CreditCard } from 'lucide-react'
+import Link from 'next/link'
+import Logo from '../components/Logo'
+import { getApiBase } from '../lib/api'
 
 export default function Signup() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [loadingCountries, setLoadingCountries] = useState(true)
+  const [loadingStates, setLoadingStates] = useState(false)
+  const [loadingCities, setLoadingCities] = useState(false)
   const [plans, setPlans] = useState([])
   const [countries, setCountries] = useState([])
   const [states, setStates] = useState([])
@@ -58,7 +64,7 @@ export default function Signup() {
     }
     
     // Load plans
-    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/platform-admin/plans/public')
+    fetch(getApiBase() + '/platform-admin/plans/public')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -75,8 +81,9 @@ export default function Signup() {
         setPlans([])
       })
     
-    // Load countries
-    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/locations/countries')
+    // Load countries (India only)
+    setLoadingCountries(true)
+    fetch(getApiBase() + '/locations/countries?india_only=true')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -84,36 +91,45 @@ export default function Signup() {
         }
       })
       .catch(err => console.error('Error loading countries:', err))
+      .finally(() => setLoadingCountries(false))
   }, [router.query])
 
   useEffect(() => {
-    if (selectedCountry) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/locations/states?country_id=${selectedCountry}`)
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setStates(data)
-            setCities([])
-            setSelectedState(null)
-            setFormData(prev => ({ ...prev, state_id: '', city_id: '' }))
-          }
-        })
-        .catch(err => console.error('Error loading states:', err))
+    if (!selectedCountry) {
+      setStates([])
+      setLoadingStates(false)
+      return
     }
+    setLoadingStates(true)
+    setCities([])
+    setSelectedState(null)
+    setFormData(prev => ({ ...prev, state_id: '', city_id: '' }))
+    const stateParam = selectedCountry && !isNaN(Number(selectedCountry)) ? `country_id=${selectedCountry}` : `country_code=${selectedCountry || 'IN'}`
+    fetch(`${getApiBase()}/locations/states?${stateParam}`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setStates(data)
+      })
+      .catch(err => console.error('Error loading states:', err))
+      .finally(() => setLoadingStates(false))
   }, [selectedCountry])
 
   useEffect(() => {
-    if (selectedState) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/locations/cities?state_id=${selectedState}`)
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setCities(data)
-            setFormData(prev => ({ ...prev, city_id: '' }))
-          }
-        })
-        .catch(err => console.error('Error loading cities:', err))
+    if (!selectedState) {
+      setCities([])
+      setLoadingCities(false)
+      return
     }
+    setLoadingCities(true)
+    setFormData(prev => ({ ...prev, city_id: '' }))
+    const params = new URLSearchParams({ state_id: String(selectedState), country_code: 'IN' })
+    fetch(`${getApiBase()}/locations/cities?${params}`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setCities(data)
+      })
+      .catch(err => console.error('Error loading cities:', err))
+      .finally(() => setLoadingCities(false))
   }, [selectedState])
 
   const handleInputChange = (e) => {
@@ -195,7 +211,7 @@ export default function Signup() {
     delete submitData.admin_confirm_password
     
     try {
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/signup/', {
+      const response = await fetch(getApiBase() + '/signup/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -253,6 +269,14 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-20 pb-12">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center">
+            <Logo width={140} height={40} className="h-10 w-auto" />
+          </Link>
+          <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900">Login</Link>
+        </div>
+      </header>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
         {/* Progress Steps */}
         <div className="mb-8">
@@ -371,14 +395,18 @@ export default function Signup() {
                     <Label htmlFor="country_id">Country *</Label>
                     <Select value={formData.country_id} onValueChange={(value) => handleSelectChange('country_id', value)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select country" />
+                        <SelectValue placeholder={loadingCountries ? 'Loading...' : 'Select country'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {countries.map(country => (
-                          <SelectItem key={country.id} value={String(country.id)}>
-                            {country.name}
-                          </SelectItem>
-                        ))}
+                        {loadingCountries ? (
+                          <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
+                        ) : (
+                          countries.map(country => (
+                            <SelectItem key={country.id ?? country.code} value={String(country.id ?? country.code)}>
+                              {country.name}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -388,17 +416,21 @@ export default function Signup() {
                     <Select 
                       value={formData.state_id} 
                       onValueChange={(value) => handleSelectChange('state_id', value)}
-                      disabled={!selectedCountry}
+                      disabled={!selectedCountry || loadingStates}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select state" />
+                        <SelectValue placeholder={loadingStates ? 'Loading...' : 'Select state'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {states.map(state => (
-                          <SelectItem key={state.id} value={String(state.id)}>
-                            {state.name}
-                          </SelectItem>
-                        ))}
+                        {loadingStates ? (
+                          <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
+                        ) : (
+                          states.map(state => (
+                            <SelectItem key={state.id ?? state.code ?? state.name} value={String(state.id ?? state.code ?? state.name)}>
+                              {state.name}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -408,17 +440,21 @@ export default function Signup() {
                     <Select 
                       value={formData.city_id} 
                       onValueChange={(value) => handleSelectChange('city_id', value)}
-                      disabled={!selectedState}
+                      disabled={!selectedState || loadingCities}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select city" />
+                        <SelectValue placeholder={loadingCities ? 'Loading...' : 'Select city'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {cities.map(city => (
-                          <SelectItem key={city.id} value={String(city.id)}>
-                            {city.name}
-                          </SelectItem>
-                        ))}
+                        {loadingCities ? (
+                          <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
+                        ) : (
+                          cities.map(city => (
+                            <SelectItem key={city.id ?? city.name} value={String(city.id ?? city.name)}>
+                              {city.name}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>

@@ -1,6 +1,7 @@
 import { Button } from "./ui/button"
 import { Mail, Phone, MapPin, Linkedin, Twitter, Github } from "lucide-react"
 import Link from "next/link"
+import Logo from "./Logo"
 
 export default function Footer() {
   return (
@@ -9,13 +10,8 @@ export default function Footer() {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-hero rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">eR</span>
-              </div>
-              <span className="text-xl font-bold bg-gradient-hero bg-clip-text text-transparent">
-                eRepairing.com
-              </span>
+            <div className="flex items-center">
+              <Logo width={140} height={40} className="h-10 w-auto" />
             </div>
             <p className="text-muted-foreground">
               The ultimate helpdesk platform for hardware manufacturers. 

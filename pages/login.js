@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Layout from '../components/Layout'
 import Button from '../components/Button'
 import Card from '../components/Card'
+import Logo from '../components/Logo'
 import { API_BASE } from '../lib/api'
 
 export default function Login({ setUser }) {
@@ -92,11 +93,11 @@ export default function Login({ setUser }) {
         <div className="w-full max-w-md">
           <Card className="p-8">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-2xl">eR</span>
+              <div className="flex justify-center mb-4">
+                <Logo className="h-14" />
               </div>
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-              <p className="text-gray-600">Sign in to your eRepairing.com account</p>
+              <p className="text-gray-600">Sign in to your eRepairing account</p>
             </div>
             
             {error && (
