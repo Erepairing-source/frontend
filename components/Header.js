@@ -18,8 +18,8 @@ export default function Header({ user, setUser }) {
     <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center">
-            <Logo width={140} height={40} className="h-10 w-auto" />
+          <Link href="/" className="flex items-center" id="header-logo-link">
+            <Logo className="h-12" />
           </Link>
 
           {/* Desktop Navigation */}

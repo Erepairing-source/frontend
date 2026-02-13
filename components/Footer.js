@@ -11,7 +11,7 @@ export default function Footer() {
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center">
-              <Logo width={140} height={40} className="h-10 w-auto" />
+              <Logo className="h-12" />
             </div>
             <p className="text-muted-foreground">
               The ultimate helpdesk platform for hardware manufacturers. 
@@ -60,24 +60,37 @@ export default function Footer() {
             <div className="space-y-4">
               <div className="flex items-center space-x-3 text-muted-foreground">
                 <Mail size={18} />
-                <span>sales@erepairing.com</span>
+                <span>hello@erepairing.com</span>
+              </div>
+              <div className="flex items-center space-x-3 text-muted-foreground">
+                <Mail size={18} />
+                <a href="mailto:delhioneglobal@gmail.com" className="hover:text-primary transition-colors">delhioneglobal@gmail.com</a>
+                <span className="text-xs text-muted-foreground">(Support)</span>
               </div>
               <div className="flex items-center space-x-3 text-muted-foreground">
                 <Phone size={18} />
-                <span>+91 98765 43210</span>
+                <span>+91 99992 25600</span>
               </div>
               <div className="flex items-start space-x-3 text-muted-foreground">
-                <MapPin size={18} className="mt-1" />
-                <span>Delhi NCR<br />India</span>
+                <MapPin size={18} className="mt-1 shrink-0" />
+                <span>401 A, 89, Hemkunt Chambers, Nehru Place, New Delhi, Delhi 110019</span>
               </div>
             </div>
           </div>
         </div>
 
         <div className="border-t border-border mt-12 pt-8">
+          <div className="flex flex-col items-center justify-center gap-4 mb-6">
+            <span className="text-sm text-muted-foreground">Powered by</span>
+            <img
+              src="/powered-by-delhi-one.png"
+              alt="DELHI ONE"
+              className="h-8 w-auto object-contain"
+            />
+          </div>
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="text-muted-foreground text-sm">
-              © 2025 eRepairing.com. All rights reserved.
+              © 2026 eRepairing.com. All rights reserved.
             </div>
             <div className="flex space-x-6 text-sm text-muted-foreground">
               <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>

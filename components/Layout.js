@@ -51,8 +51,8 @@ export default function Layout({ children, user, setUser }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Link href={user ? getDashboardLink(user.role) : '/'} className="flex items-center">
-                <Logo width={140} height={40} className="h-10 w-auto" />
+              <Link href={user ? getDashboardLink(user.role) : '/'} className="flex items-center" id="header-logo-link">
+                <Logo className="h-12" />
               </Link>
             </div>
 
@@ -105,7 +105,7 @@ export default function Layout({ children, user, setUser }) {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               <div>
                 <div className="flex items-center mb-4">
-                  <Logo width={120} height={36} className="h-9 w-auto" />
+                  <Logo className="h-11" />
                 </div>
                 <p className="text-gray-400 text-sm">AI-first Service Management Platform</p>
               </div>

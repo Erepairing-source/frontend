@@ -272,7 +272,7 @@ export default function Signup() {
       <header className="fixed top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <Logo width={140} height={40} className="h-10 w-auto" />
+            <Logo className="h-12" />
           </Link>
           <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900">Login</Link>
         </div>

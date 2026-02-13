@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import { ArrowLeft, Users, Plus, X, Edit, Eye, Search, Store } from 'lucide-react'
+import { getApiBase } from '../../lib/api'
 
 export default function UsersPage() {
   const router = useRouter()
@@ -63,7 +64,7 @@ export default function UsersPage() {
   const loadUsers = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/users/', {
+      const response = await fetch(getApiBase() + '/users/', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (response.ok) {
@@ -84,7 +85,7 @@ export default function UsersPage() {
   const loadAvailableRoles = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/users/available-roles', {
+      const response = await fetch(getApiBase() + '/users/available-roles', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (response.ok) {
@@ -112,7 +113,7 @@ export default function UsersPage() {
 
   const loadCountries = async () => {
     try {
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/locations/countries')
+      const response = await fetch(getApiBase() + '/locations/countries')
       if (response.ok) {
         const data = await response.json()
         setCountries(data)
@@ -130,7 +131,7 @@ export default function UsersPage() {
       return
     }
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/locations/states?country_id=${countryId}`)
+      const response = await fetch(`${getApiBase()}/locations/states?country_id=${countryId}`)
       if (response.ok) {
         const data = await response.json()
         setStates(data)
@@ -149,7 +150,7 @@ export default function UsersPage() {
       return
     }
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/locations/cities?state_id=${stateId}`)
+      const response = await fetch(`${getApiBase()}/locations/cities?state_id=${stateId}`)
       if (response.ok) {
         const data = await response.json()
         setCities(data)
@@ -189,7 +190,7 @@ export default function UsersPage() {
         delete updateData.password
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/users/${selectedUser.id}`, {
+      const response = await fetch(`${getApiBase()}/users/${selectedUser.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -243,7 +244,7 @@ export default function UsersPage() {
           is_active: vendorFormData.is_active
         }
 
-        const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/platform-admin/vendors', {
+        const response = await fetch(getApiBase() + '/platform-admin/vendors', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -280,7 +281,7 @@ export default function UsersPage() {
           return
         }
 
-        const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1') + '/users/', {
+        const response = await fetch(getApiBase() + '/users/', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
