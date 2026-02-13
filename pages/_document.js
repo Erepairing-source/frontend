@@ -1,15 +1,13 @@
 import { Html, Head, Main, NextScript } from 'next/document'
 
 /**
- * Load config.js before the app so window.__API_BASE__ can override the API URL at runtime
- * (e.g. set in public/config.js to your backend URL so one build works on AWS without rebuilding).
+ * Custom document. Runtime config (window.__API_BASE__) is loaded in _app.js via
+ * next/script (strategy="beforeInteractive") to avoid synchronous scripts here.
  */
 export default function Document() {
   return (
     <Html lang="en">
-      <Head>
-        <script src="/config.js" />
-      </Head>
+      <Head />
       <body>
         <Main />
         <NextScript />

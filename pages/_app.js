@@ -1,4 +1,5 @@
 import '../styles/globals.css'
+import Script from 'next/script'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
@@ -58,9 +59,12 @@ export default function App({ Component, pageProps }) {
 
   // All other pages use Layout
   return (
-    <Layout user={user} setUser={setUser}>
-      <Component {...pageProps} user={user} setUser={setUser} />
-      <FloatingRoleAssistant user={user} />
-    </Layout>
+    <>
+      <Script src="/config.js" strategy="beforeInteractive" />
+      <Layout user={user} setUser={setUser}>
+        <Component {...pageProps} user={user} setUser={setUser} />
+        <FloatingRoleAssistant user={user} />
+      </Layout>
+    </>
   )
 }
