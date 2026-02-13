@@ -1423,6 +1423,26 @@ export default function OrganizationAdminDashboard() {
       alert('Please select a city for this inventory item')
       return
     }
+
+    const cid = parseInt(inventoryForm.country_id, 10)
+    const sid = parseInt(inventoryForm.state_id, 10)
+    const cityId = parseInt(inventoryForm.city_id, 10)
+    const validCountryId = !isNaN(cid) && cid > 0
+    const validStateId = !isNaN(sid) && sid > 0
+    const validCityId = !isNaN(cityId) && cityId > 0
+    const payload = {
+      ...inventoryForm,
+      country_id: validCountryId ? cid : null,
+      state_id: validStateId ? sid : null,
+      city_id: validCityId ? cityId : null
+    }
+    if (!validCountryId && inventoryForm.country_id) payload.country_code = String(inventoryForm.country_id).trim()
+    if (!validStateId && inventoryForm.state_id) {
+      const sv = String(inventoryForm.state_id).trim()
+      if (sv.length <= 4 && sv === sv.toUpperCase()) payload.state_code = sv
+      else payload.state_name = sv
+    }
+    if (!validCityId && inventoryForm.city_id) payload.city_name = String(inventoryForm.city_id).trim()
     
     try {
       const response = await fetch(getApiBase() + '/org-admin/inventory/stock', {
@@ -1431,7 +1451,7 @@ export default function OrganizationAdminDashboard() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(inventoryForm)
+        body: JSON.stringify(payload)
       })
       
       if (response.ok) {
