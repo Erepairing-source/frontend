@@ -199,14 +199,28 @@ export default function Signup() {
     
     setLoading(true)
     
+    const cid = parseInt(formData.country_id, 10)
+    const sid = parseInt(formData.state_id, 10)
+    const cityId = parseInt(formData.city_id, 10)
+    const validCountryId = !isNaN(cid) && cid > 0
+    const validStateId = !isNaN(sid) && sid > 0
+    const validCityId = !isNaN(cityId) && cityId > 0
+
     const submitData = {
       ...formData,
-      plan_id: parseInt(formData.plan_id),
-      country_id: parseInt(formData.country_id),
-      state_id: parseInt(formData.state_id),
-      city_id: parseInt(formData.city_id),
-      billing_period: billingPeriod
+      plan_id: parseInt(formData.plan_id, 10),
+      billing_period: billingPeriod,
+      country_id: validCountryId ? cid : null,
+      state_id: validStateId ? sid : null,
+      city_id: validCityId ? cityId : null
     }
+    if (!validCountryId && formData.country_id) submitData.country_code = String(formData.country_id).trim()
+    if (!validStateId && formData.state_id) {
+      const sv = String(formData.state_id).trim()
+      if (sv.length <= 4 && sv === sv.toUpperCase()) submitData.state_code = sv
+      else submitData.state_name = sv
+    }
+    if (!validCityId && formData.city_id) submitData.city_name = String(formData.city_id).trim()
     
     delete submitData.admin_confirm_password
     

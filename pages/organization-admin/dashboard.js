@@ -2202,6 +2202,21 @@ export default function OrganizationAdminDashboard() {
                       {dashboardData?.organization?.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
+                  {(dashboardData?.organization?.city_name || dashboardData?.organization?.state_name || dashboardData?.organization?.country_name) && (
+                    <div>
+                      <Label className="text-gray-500">Location</Label>
+                      <p>
+                        {[dashboardData.organization.city_name, dashboardData.organization.state_name, dashboardData.organization.country_name]
+                          .filter(Boolean).join(', ')}
+                      </p>
+                    </div>
+                  )}
+                  {dashboardData?.organization?.address && (
+                    <div>
+                      <Label className="text-gray-500">Address</Label>
+                      <p className="whitespace-pre-wrap">{dashboardData.organization.address}</p>
+                    </div>
+                  )}
                   <Button variant="outline" className="w-full">
                     <Edit size={16} className="mr-2" />
                     Edit Organization
