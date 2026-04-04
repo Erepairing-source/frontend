@@ -23,7 +23,38 @@ import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
-import { getApiBase } from '../../lib/api'
+import { getApiBase, formatApiError } from '../../lib/api'
+
+/** Product.specifications keys managed by dedicated form fields / additional_notes. */
+const RESERVED_PRODUCT_SPEC_KEYS = new Set(['manufacturing_year', 'batch_number', 'additional_notes'])
+
+function specDetailRowsFromSpecifications(specs) {
+  const s = specs && typeof specs === 'object' && !Array.isArray(specs) ? specs : {}
+  const entries = Object.entries(s).filter(([k]) => !RESERVED_PRODUCT_SPEC_KEYS.has(k))
+  if (!entries.length) return [{ key: '', value: '' }]
+  return entries.map(([key, value]) => ({
+    key,
+    value:
+      value != null && typeof value === 'object'
+        ? JSON.stringify(value)
+        : String(value ?? ''),
+  }))
+}
+
+function buildProductSpecificationsFromForm(productForm) {
+  const specs = {}
+  if (productForm.manufacturing_year != null && productForm.manufacturing_year !== '') {
+    specs.manufacturing_year = productForm.manufacturing_year
+  }
+  const bn = productForm.batch_number != null ? String(productForm.batch_number).trim() : ''
+  if (bn) specs.batch_number = bn
+  const rows = productForm.specDetailRows || []
+  for (const row of rows) {
+    const k = (row.key || '').trim()
+    if (k) specs[k] = row.value != null ? String(row.value).trim() : ''
+  }
+  return specs
+}
 import ComingSoon from '../../components/ComingSoon'
 
 /** Days from today (UTC date) until subscription end; negative if expired. */
@@ -330,7 +361,8 @@ export default function OrganizationAdminDashboard() {
     extended_warranty_available: false,
     manufacturing_year: new Date().getFullYear(),
     batch_number: '',
-    specifications: {},
+    additional_notes: '',
+    specDetailRows: [{ key: '', value: '' }],
     is_active: true,
     // Advanced fields (optional)
     common_failures: [],
@@ -1006,41 +1038,27 @@ export default function OrganizationAdminDashboard() {
         : getApiBase() + '/org-admin/products'
       const method = editingProduct ? 'PUT' : 'POST'
       
-      // Prepare data - ensure specifications is an object, not a string
-      // Include manufacturing_year and batch_number in specifications if provided
-      const specs = typeof productForm.specifications === 'string' 
-        ? (() => {
-            try {
-              return productForm.specifications.trim() ? JSON.parse(productForm.specifications) : {}
-            } catch {
-              return {}
-            }
-          })()
-        : productForm.specifications || {}
-      
-      // Add manufacturing_year and batch_number to specifications
-      if (productForm.manufacturing_year) {
-        specs.manufacturing_year = productForm.manufacturing_year
-      }
-      if (productForm.batch_number) {
-        specs.batch_number = productForm.batch_number
-      }
-      
+      const specs = buildProductSpecificationsFromForm(productForm)
+      const noteTrim = (productForm.additional_notes || '').trim()
+
       const payload = {
-        ...productForm,
+        name: productForm.name,
+        category: productForm.category,
+        brand: productForm.brand,
+        description: productForm.description,
+        default_warranty_months: productForm.default_warranty_months,
+        extended_warranty_available: productForm.extended_warranty_available,
         specifications: specs,
-        model_number: productForm.model_number, // This will be used to create ProductModel
-        common_failures: Array.isArray(productForm.common_failures) 
-          ? productForm.common_failures 
+        additional_notes: noteTrim || null,
+        model_number: productForm.model_number,
+        common_failures: Array.isArray(productForm.common_failures)
+          ? productForm.common_failures
           : (productForm.common_failures || '').split('\n').filter(f => f.trim()),
         recommended_parts: Array.isArray(productForm.recommended_parts)
           ? productForm.recommended_parts
-          : (productForm.recommended_parts || '').split(',').map(p => p.trim()).filter(p => p)
+          : (productForm.recommended_parts || '').split(',').map(p => p.trim()).filter(p => p),
+        is_active: productForm.is_active,
       }
-      
-      // Remove fields that shouldn't be sent directly
-      delete payload.manufacturing_year
-      delete payload.batch_number
       
       const response = await fetch(url, {
         method: method,
@@ -1064,7 +1082,8 @@ export default function OrganizationAdminDashboard() {
           extended_warranty_available: false,
           manufacturing_year: new Date().getFullYear(),
           batch_number: '',
-          specifications: {},
+          additional_notes: '',
+          specDetailRows: [{ key: '', value: '' }],
           is_active: true,
           common_failures: [],
           recommended_parts: []
@@ -1083,6 +1102,7 @@ export default function OrganizationAdminDashboard() {
   const handleEditProduct = (product) => {
     setEditingProduct(product)
     setProductUploadMode('single')
+    const specs = product.specifications && typeof product.specifications === 'object' ? product.specifications : {}
     setProductForm({
       name: product.name || '',
       category: product.category || '',
@@ -1091,9 +1111,10 @@ export default function OrganizationAdminDashboard() {
       description: product.description || '',
       default_warranty_months: product.default_warranty_months || 12,
       extended_warranty_available: product.extended_warranty_available || false,
-      manufacturing_year: product.manufacturing_year || new Date().getFullYear(),
-      batch_number: product.batch_number || '',
-      specifications: product.specifications || {},
+      manufacturing_year: specs.manufacturing_year ?? product.manufacturing_year ?? new Date().getFullYear(),
+      batch_number: specs.batch_number != null ? String(specs.batch_number) : (product.batch_number || ''),
+      additional_notes: specs.additional_notes != null ? String(specs.additional_notes) : '',
+      specDetailRows: specDetailRowsFromSpecifications(specs),
       is_active: product.is_active !== undefined ? product.is_active : true,
       common_failures: product.common_failures || [],
       recommended_parts: product.recommended_parts || []
@@ -2952,7 +2973,8 @@ export default function OrganizationAdminDashboard() {
                       extended_warranty_available: false,
                       manufacturing_year: new Date().getFullYear(),
                       batch_number: '',
-                      specifications: {},
+                      additional_notes: '',
+                      specDetailRows: [{ key: '', value: '' }],
                       is_active: true,
                       common_failures: [],
                       recommended_parts: []
@@ -4530,7 +4552,7 @@ export default function OrganizationAdminDashboard() {
                             <li><strong>extended_warranty_available</strong> (optional) - true/false</li>
                             <li><strong>model_number</strong> (optional) - Model number for product model</li>
                             <li><strong>model_name</strong> (optional) - Model name</li>
-                            <li><strong>specifications</strong> (optional) - JSON string e.g., {'{"capacity": "1.5T"}'}</li>
+                            <li><strong>specifications</strong> (optional) - JSON object string for bulk import only, e.g. {'{"capacity": "1.5T"}'}</li>
                             <li><strong>common_failures</strong> (optional) - Comma-separated failures</li>
                             <li><strong>recommended_parts</strong> (optional) - Comma-separated part IDs</li>
                           </ul>
@@ -4654,23 +4676,80 @@ export default function OrganizationAdminDashboard() {
                     <Label>Extended Warranty Available</Label>
                   </div>
                 </div>
-                <div>
-                  <Label>Additional Specifications (Optional)</Label>
+                <div className="space-y-2">
+                  <Label>Additional specifications (optional)</Label>
                   <Textarea
-                    value={typeof productForm.specifications === 'object' ? JSON.stringify(productForm.specifications, null, 2) : productForm.specifications || '{}'}
-                    onChange={(e) => {
-                      try {
-                        const specs = e.target.value.trim() ? JSON.parse(e.target.value) : {}
-                        setProductForm({...productForm, specifications: specs})
-                      } catch (err) {
-                        // Invalid JSON, but allow typing
-                        setProductForm({...productForm, specifications: e.target.value})
-                      }
-                    }}
-                    rows={3}
-                    placeholder='{"capacity": "1.5T", "voltage": "220V", "power": "1500W"}'
+                    value={productForm.additional_notes || ''}
+                    onChange={(e) => setProductForm({ ...productForm, additional_notes: e.target.value })}
+                    rows={4}
+                    placeholder="e.g. Inverter compressor, R32 refrigerant, Wi‑Fi enabled — plain text is fine."
                   />
-                  <p className="text-xs text-gray-500 mt-1">Enter additional specifications as JSON (optional)</p>
+                  <p className="text-xs text-gray-500">
+                    Free-form notes are saved with the product; no JSON required.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Technical fields (optional)</Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Add labeled values (e.g. capacity, voltage). Manufacturing year and batch number stay in the fields above.
+                  </p>
+                  <div className="space-y-2">
+                    {(productForm.specDetailRows || [{ key: '', value: '' }]).map((row, idx) => (
+                      <div key={idx} className="flex gap-2 items-start">
+                        <Input
+                          className="flex-1"
+                          placeholder="Name (e.g. capacity)"
+                          value={row.key}
+                          onChange={(e) => {
+                            const next = [...(productForm.specDetailRows || [])]
+                            next[idx] = { ...next[idx], key: e.target.value }
+                            setProductForm({ ...productForm, specDetailRows: next })
+                          }}
+                        />
+                        <Input
+                          className="flex-1"
+                          placeholder="Value (e.g. 1.5 ton)"
+                          value={row.value}
+                          onChange={(e) => {
+                            const next = [...(productForm.specDetailRows || [])]
+                            next[idx] = { ...next[idx], value: e.target.value }
+                            setProductForm({ ...productForm, specDetailRows: next })
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0"
+                          disabled={(productForm.specDetailRows || []).length <= 1}
+                          onClick={() => {
+                            const next = (productForm.specDetailRows || []).filter((_, i) => i !== idx)
+                            setProductForm({
+                              ...productForm,
+                              specDetailRows: next.length ? next : [{ key: '', value: '' }],
+                            })
+                          }}
+                          aria-label="Remove row"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setProductForm({
+                        ...productForm,
+                        specDetailRows: [...(productForm.specDetailRows || []), { key: '', value: '' }],
+                      })
+                    }
+                  >
+                    <Plus size={14} className="mr-1" />
+                    Add field
+                  </Button>
                 </div>
                 
                 {/* Advanced Fields - Collapsible */}
