@@ -11,7 +11,7 @@ import { Switch } from '../../components/ui/switch'
 import { Badge } from '../../components/ui/badge'
 import { 
   Building2, Users, Ticket, Package, Shield, BarChart3, Settings, 
-  Plus, Search, Filter, Download, Eye, Edit, Trash2, Save, X,
+  Plus, Search, Filter, Download, Edit, Trash2, Save, X,
   TrendingUp, Clock, CheckCircle2, XCircle, AlertCircle,
   Sparkles, Brain, MessageSquare, TrendingDown, Route, Zap,
   Globe, MapPin, Link2, Database, Code, Webhook, CreditCard,
@@ -109,6 +109,31 @@ function getDefaultServicePolicyForm() {
     replacement_within_days: '',
     other_policy_notes: '',
   }
+}
+
+/** Map API/DB sla_type to Select value (lowercase slug). */
+function normalizeSlaTypeSlug(raw) {
+  if (raw == null || raw === '') return 'resolution'
+  const s = String(raw).trim().toLowerCase().replace(/-/g, '_')
+  const slugs = new Set(['first_response', 'assignment', 'resolution', 'on_site'])
+  if (slugs.has(s)) return s
+  const up = String(raw).trim().toUpperCase().replace(/-/g, '_')
+  const fromUpper = {
+    FIRST_RESPONSE: 'first_response',
+    ASSIGNMENT: 'assignment',
+    RESOLUTION: 'resolution',
+    ON_SITE: 'on_site',
+  }
+  return fromUpper[up] || 'resolution'
+}
+
+/** Parse positive int from form value; null if missing or not a plain integer string. */
+function intOrNull(v) {
+  if (v == null || v === '') return null
+  const s = String(v).trim()
+  const n = parseInt(s, 10)
+  if (!Number.isFinite(n) || String(n) !== s) return null
+  return n
 }
 
 /** Build API `rules` object from friendly form fields (matches policy_matcher expectations). */
@@ -449,8 +474,11 @@ export default function OrganizationAdminDashboard() {
     phone: '',
     address: '',
     country_id: null,
+    country_select_key: null,
     state_id: null,
+    state_select_key: null,
     city_id: null,
+    city_name: '',
     product_categories: [],
     service_regions: []
   })
@@ -525,7 +553,7 @@ export default function OrganizationAdminDashboard() {
             if (data && data.length > 0) {
               setStates(data)
               setInventoryForm(prev => ({...prev, state_id: '', city_id: ''}))
-              setPartnerForm(prev => ({...prev, state_id: null, city_id: null}))
+              setPartnerForm(prev => ({...prev, state_id: null, city_id: null, city_name: ''}))
               setCities([])
               return
             }
@@ -547,7 +575,7 @@ export default function OrganizationAdminDashboard() {
             if (data && data.length > 0) {
               setStates(data)
               setInventoryForm(prev => ({...prev, state_id: '', city_id: ''}))
-              setPartnerForm(prev => ({...prev, state_id: null, city_id: null}))
+              setPartnerForm(prev => ({...prev, state_id: null, city_id: null, city_name: ''}))
               setCities([])
               return
             }
@@ -566,7 +594,7 @@ export default function OrganizationAdminDashboard() {
           if (dbData && dbData.length > 0) {
             setStates(dbData)
             setInventoryForm(prev => ({...prev, state_id: '', city_id: ''}))
-            setPartnerForm(prev => ({...prev, state_id: null, city_id: null}))
+            setPartnerForm(prev => ({...prev, state_id: null, city_id: null, city_name: ''}))
             setCities([])
             return
           }
@@ -579,7 +607,7 @@ export default function OrganizationAdminDashboard() {
           if (dbData && dbData.length > 0) {
             setStates(dbData)
             setInventoryForm(prev => ({...prev, state_id: '', city_id: ''}))
-            setPartnerForm(prev => ({...prev, state_id: null, city_id: null}))
+            setPartnerForm(prev => ({...prev, state_id: null, city_id: null, city_name: ''}))
             setCities([])
             return
           }
@@ -593,7 +621,7 @@ export default function OrganizationAdminDashboard() {
       
       // Reset state and city when country changes
       setInventoryForm(prev => ({...prev, state_id: '', city_id: ''}))
-      setPartnerForm(prev => ({...prev, state_id: null, city_id: null}))
+      setPartnerForm(prev => ({...prev, state_id: null, city_id: null, city_name: ''}))
     } catch (error) {
       console.error('Error loading states:', error)
       setStates([])
@@ -648,7 +676,7 @@ export default function OrganizationAdminDashboard() {
               if (data && data.length > 0) {
                 setCities(data)
                 setInventoryForm(prev => ({...prev, city_id: ''}))
-                setPartnerForm(prev => ({...prev, city_id: null}))
+                setPartnerForm(prev => ({...prev, city_id: null, city_name: ''}))
                 return
               }
             }
@@ -676,7 +704,7 @@ export default function OrganizationAdminDashboard() {
             if (data && data.length > 0) {
               setCities(data)
               setInventoryForm(prev => ({...prev, city_id: ''}))
-              setPartnerForm(prev => ({...prev, city_id: null}))
+              setPartnerForm(prev => ({...prev, city_id: null, city_name: ''}))
               return
             }
           } else {
@@ -700,7 +728,7 @@ export default function OrganizationAdminDashboard() {
             if (data && data.length > 0) {
               setCities(data)
               setInventoryForm(prev => ({...prev, city_id: ''}))
-              setPartnerForm(prev => ({...prev, city_id: null}))
+              setPartnerForm(prev => ({...prev, city_id: null, city_name: ''}))
               return
             }
           }
@@ -717,31 +745,31 @@ export default function OrganizationAdminDashboard() {
           if (dbData && dbData.length > 0) {
             setCities(dbData)
             setInventoryForm(prev => ({...prev, city_id: ''}))
-            setPartnerForm(prev => ({...prev, city_id: null}))
+            setPartnerForm(prev => ({...prev, city_id: null, city_name: ''}))
             return
           }
         }
       } else {
         // Try with the stateId directly
-        const dbResponse = await fetch(`${getApiBase()}/locations/cities?state_id=${stateId}`)
+        const dbResponse = await fetch(`${getApiBase()}/locations/cities?state_id=${stateIdOrName}`)
         if (dbResponse.ok) {
           const dbData = await dbResponse.json()
           if (dbData && dbData.length > 0) {
             setCities(dbData)
             setInventoryForm(prev => ({...prev, city_id: ''}))
-            setPartnerForm(prev => ({...prev, city_id: null}))
+            setPartnerForm(prev => ({...prev, city_id: null, city_name: ''}))
             return
           }
         }
       }
       
       // If all else fails, show error
-      console.error('Failed to load cities for state:', stateId, stateName)
+      console.error('Failed to load cities for state:', stateIdOrName, stateName)
       setCities([])
       
       // Reset city when state changes
       setInventoryForm(prev => ({...prev, city_id: ''}))
-      setPartnerForm(prev => ({...prev, city_id: null}))
+      setPartnerForm(prev => ({...prev, city_id: null, city_name: ''}))
     } catch (error) {
       console.error('Error loading cities:', error)
       setCities([])
@@ -1284,7 +1312,7 @@ export default function OrganizationAdminDashboard() {
   const handleEditSLA = (policy) => {
     setEditingSLA(policy)
     setSlaForm({
-      sla_type: policy.sla_type || 'resolution',
+      sla_type: normalizeSlaTypeSlug(policy.sla_type),
       target_hours: policy.target_hours || 24,
       product_category: policy.product_category || '',
       priority_overrides: policy.priority_overrides || {},
@@ -2184,9 +2212,10 @@ export default function OrganizationAdminDashboard() {
           email: partnerForm.email,
           phone: partnerForm.phone,
           address: partnerForm.address || '',
-          country_id: partnerForm.country_id ? parseInt(partnerForm.country_id) : null,
-          state_id: partnerForm.state_id ? parseInt(partnerForm.state_id) : null,
-          city_id: partnerForm.city_id ? parseInt(partnerForm.city_id) : null,
+          country_id: intOrNull(partnerForm.country_id),
+          state_id: intOrNull(partnerForm.state_id),
+          city_id: intOrNull(partnerForm.city_id),
+          city_name: intOrNull(partnerForm.city_id) ? undefined : (partnerForm.city_name || '').trim() || undefined,
           product_categories: partnerForm.product_categories || [],
           service_regions: partnerForm.service_regions || []
         })
@@ -2200,8 +2229,11 @@ export default function OrganizationAdminDashboard() {
           phone: '',
           address: '',
           country_id: null,
+          country_select_key: null,
           state_id: null,
+          state_select_key: null,
           city_id: null,
+          city_name: '',
           product_categories: [],
           service_regions: []
         })
@@ -3407,7 +3439,7 @@ export default function OrganizationAdminDashboard() {
                       <Target size={20} />
                       SLA Policies
                     </CardTitle>
-                    <Button size="sm" onClick={() => {
+                    <Button type="button" size="sm" onClick={() => {
                       setEditingSLA(null)
                       setSlaForm({
                         sla_type: 'resolution',
@@ -3429,7 +3461,7 @@ export default function OrganizationAdminDashboard() {
                     <div className="text-center py-8">
                       <Target size={48} className="mx-auto text-gray-400 mb-4" />
                       <p className="text-gray-600 mb-4">No SLA policies configured</p>
-                      <Button size="sm" onClick={() => {
+                      <Button type="button" size="sm" onClick={() => {
                         setEditingSLA(null)
                         setSlaForm({
                           sla_type: 'resolution',
@@ -3447,7 +3479,19 @@ export default function OrganizationAdminDashboard() {
                   ) : (
                     <div className="space-y-3">
                       {slaPolicies.map(policy => (
-                        <div key={policy.id} className="p-4 border rounded-lg">
+                        <div
+                          key={policy.id}
+                          role="button"
+                          tabIndex={0}
+                          className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50/80 transition-colors text-left w-full"
+                          onClick={() => handleEditSLA(policy)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              handleEditSLA(policy)
+                            }
+                          }}
+                        >
                           <div className="flex items-start justify-between mb-2">
                             <div>
                               <h4 className="font-semibold capitalize">{String(policy.sla_type || '').replace(/_/g, ' ')}</h4>
@@ -3471,12 +3515,12 @@ export default function OrganizationAdminDashboard() {
                               {JSON.stringify(policy.priority_overrides)}
                             </div>
                           )}
-                          <div className="flex gap-2 mt-3">
-                            <Button variant="ghost" size="sm" onClick={() => handleEditSLA(policy)}>
+                          <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => handleEditSLA(policy)}>
                               <Edit size={14} className="mr-1" />
                               Edit
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDeleteSLA(policy.id)} className="text-red-600 hover:text-red-700">
+                            <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteSLA(policy.id)} className="text-red-600 hover:text-red-700">
                               <Trash2 size={14} className="mr-1" />
                               Delete
                             </Button>
@@ -3602,8 +3646,8 @@ export default function OrganizationAdminDashboard() {
                             <th className="text-left py-3 px-4 text-sm font-semibold">Partner Name</th>
                             <th className="text-left py-3 px-4 text-sm font-semibold">Email</th>
                             <th className="text-left py-3 px-4 text-sm font-semibold">Phone</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold">Location</th>
                             <th className="text-left py-3 px-4 text-sm font-semibold">Status</th>
-                            <th className="text-left py-3 px-4 text-sm font-semibold">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -3612,20 +3656,13 @@ export default function OrganizationAdminDashboard() {
                               <td className="py-3 px-4 font-medium">{partner.name}</td>
                               <td className="py-3 px-4">{partner.email}</td>
                               <td className="py-3 px-4">{partner.phone}</td>
+                              <td className="py-3 px-4 text-sm text-gray-700 max-w-[220px]">
+                                {[partner.country_name, partner.state_name, partner.city_name].filter(Boolean).join(' · ') || '—'}
+                              </td>
                               <td className="py-3 px-4">
                                 <Badge className={partner.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
                                   {partner.is_active ? 'Active' : 'Inactive'}
                                 </Badge>
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex gap-2">
-                                  <Button variant="ghost" size="sm">
-                                    <Eye size={14} />
-                                  </Button>
-                                  <Button variant="ghost" size="sm">
-                                    <Edit size={14} />
-                                  </Button>
-                                </div>
                               </td>
                             </tr>
                           ))}
@@ -4813,7 +4850,7 @@ export default function OrganizationAdminDashboard() {
 
         {/* Create SLA Policy Modal */}
         {showSLAModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
             <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <CardHeader>
                 <div className="flex justify-between items-center">
@@ -4831,7 +4868,7 @@ export default function OrganizationAdminDashboard() {
                   <Label>SLA Type *</Label>
                   <Select value={slaForm.sla_type} onValueChange={(val) => setSlaForm({...slaForm, sla_type: val})}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="SLA type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="first_response">First Response</SelectItem>
@@ -4879,11 +4916,11 @@ export default function OrganizationAdminDashboard() {
                   <Label>Policy active</Label>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleCreateSLAPolicy} className="flex-1">
+                  <Button type="button" onClick={handleCreateSLAPolicy} className="flex-1">
                     <Save size={16} className="mr-2" />
                     {editingSLA ? 'Update Policy' : 'Create Policy'}
                   </Button>
-                  <Button variant="outline" onClick={() => {
+                  <Button type="button" variant="outline" onClick={() => {
                     setShowSLAModal(false)
                     setEditingSLA(null)
                   }}>
@@ -5129,8 +5166,11 @@ export default function OrganizationAdminDashboard() {
                       phone: '',
                       address: '',
                       country_id: null,
+                      country_select_key: null,
                       state_id: null,
+                      state_select_key: null,
                       city_id: null,
+                      city_name: '',
                       product_categories: [],
                       service_regions: []
                     })
@@ -5194,12 +5234,34 @@ export default function OrganizationAdminDashboard() {
                   <div>
                     <Label>Country</Label>
                     <Select
-                      value={partnerForm.country_id?.toString() || ''}
+                      value={
+                        partnerForm.country_id != null
+                          ? String(partnerForm.country_id)
+                          : partnerForm.country_select_key || undefined
+                      }
                       onValueChange={(value) => {
-                        const countryId = value ? parseInt(value) : null
-                        setPartnerForm({...partnerForm, country_id: countryId, state_id: null, city_id: null})
-                        if (countryId) {
-                          loadStates(countryId)
+                        const idx = countries.findIndex((c, i) => {
+                          const v = c.id != null ? String(c.id) : (c.code || `country-${i}`)
+                          return v === value
+                        })
+                        const country = idx >= 0 ? countries[idx] : null
+                        const countryId = country?.id ?? null
+                        const countrySelectKey = country
+                          ? country.id != null
+                            ? String(country.id)
+                            : country.code || `country-${idx}`
+                          : undefined
+                        setPartnerForm({
+                          ...partnerForm,
+                          country_id: countryId,
+                          country_select_key: countrySelectKey,
+                          state_id: null,
+                          state_select_key: null,
+                          city_id: null,
+                          city_name: '',
+                        })
+                        if (country) {
+                          loadStates(country.id ?? country.code ?? value)
                         } else {
                           setStates([])
                           setCities([])
@@ -5225,49 +5287,52 @@ export default function OrganizationAdminDashboard() {
                   <div>
                     <Label>State</Label>
                     <Select
-                      value={partnerForm.state_id?.toString() || ''}
+                      value={
+                        partnerForm.state_id != null && partnerForm.state_id !== ''
+                          ? String(partnerForm.state_id)
+                          : partnerForm.state_select_key || undefined
+                      }
                       onValueChange={(value) => {
-                        // Handle both numeric IDs and string identifiers (for API responses)
                         let stateId = null
                         let stateName = null
-                        
-                        // Try to parse as integer first
-                        const parsedId = parseInt(value)
-                        if (!isNaN(parsedId) && parsedId.toString() === value) {
-                          // It's a numeric ID
+                        let stateSelectKey = value
+
+                        const parsedId = parseInt(value, 10)
+                        if (!Number.isNaN(parsedId) && String(parsedId) === value) {
                           stateId = parsedId
-                          // Find state name from states list
                           const selectedState = states.find(s => s.id === parsedId)
                           stateName = selectedState?.name
                         } else {
-                          // It's a string identifier (state name, code, or "state-X")
                           const selectedState = states.find(s => {
                             if (s.name === value) return true
                             if (s.code === value) return true
                             const index = states.indexOf(s)
-                            if (`state-${index}` === value) return true
-                            return false
+                            return `state-${index}` === value
                           })
-                          stateName = selectedState?.name || value // Use value as state name if not found
-                          stateId = selectedState?.id || value // Use value as fallback identifier
+                          stateName = selectedState?.name || value
+                          stateId = selectedState?.id ?? null
                         }
-                        
-                        setPartnerForm({...partnerForm, state_id: stateId, city_id: null})
-                        if (stateName || stateId) {
-                          // Use state name for India API (preferred), stateId as fallback
+
+                        setPartnerForm({
+                          ...partnerForm,
+                          state_id: stateId != null ? stateId : stateSelectKey,
+                          state_select_key: stateSelectKey,
+                          city_id: null,
+                          city_name: '',
+                        })
+                        if (stateName || stateId != null) {
                           loadCities(stateName || stateId)
                         } else {
                           setCities([])
                         }
                       }}
-                      disabled={!partnerForm.country_id}
+                      disabled={partnerForm.country_id == null && !partnerForm.country_select_key}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select state" />
                       </SelectTrigger>
                       <SelectContent>
                         {states.map((state, index) => {
-                          // Handle both API responses (id: null) and database responses (id: number)
                           const value = state.id ? state.id.toString() : (state.code || state.name || `state-${index}`)
                           const key = state.id || state.code || state.name || `state-${index}`
                           return (
@@ -5282,19 +5347,30 @@ export default function OrganizationAdminDashboard() {
                   <div>
                     <Label>City</Label>
                     <Select
-                      value={partnerForm.city_id?.toString() || ''}
+                      value={
+                        intOrNull(partnerForm.city_id) != null
+                          ? String(intOrNull(partnerForm.city_id))
+                          : partnerForm.city_name || undefined
+                      }
                       onValueChange={(value) => {
-                        const cityId = value ? parseInt(value) : null
-                        setPartnerForm({...partnerForm, city_id: cityId})
+                        const city = cities.find(
+                          (c) => (c.id != null && String(c.id) === value) || c.name === value
+                        )
+                        const cid = city?.id != null ? intOrNull(city.id) : null
+                        const cname = city?.name || value
+                        setPartnerForm({
+                          ...partnerForm,
+                          city_id: cid,
+                          city_name: cid != null ? '' : cname,
+                        })
                       }}
-                      disabled={!partnerForm.state_id}
+                      disabled={partnerForm.state_id == null || partnerForm.state_id === ''}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select city" />
                       </SelectTrigger>
                       <SelectContent>
                         {cities.map((city, index) => {
-                          // Handle both API responses (id: null) and database responses (id: number)
                           const value = city.id ? city.id.toString() : (city.name || `city-${index}`)
                           const key = city.id || city.name || `city-${index}`
                           return (
@@ -5347,8 +5423,11 @@ export default function OrganizationAdminDashboard() {
                       phone: '',
                       address: '',
                       country_id: null,
+                      country_select_key: null,
                       state_id: null,
+                      state_select_key: null,
                       city_id: null,
+                      city_name: '',
                       product_categories: [],
                       service_regions: []
                     })
