@@ -40,6 +40,212 @@ function subscriptionDaysRemaining(sub) {
 
 const SUBSCRIPTION_WARNING_DAYS = 10
 
+const SERVICE_POLICY_TYPES = ['warranty', 'chargeable', 'parts', 'pricing', 'replacement', 'other']
+const SERVICE_POLICY_PRODUCT_CATEGORIES = ['ac', 'refrigerator', 'washing_machine', 'tv']
+
+/** Normalize API `rules` (object or JSON string) for the form. */
+function parseServicePolicyRules(raw) {
+  if (raw == null) return {}
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw
+  if (typeof raw === 'string') {
+    try {
+      const p = JSON.parse(raw)
+      return typeof p === 'object' && p !== null && !Array.isArray(p) ? p : {}
+    } catch {
+      return {}
+    }
+  }
+  return {}
+}
+
+/** Default form state for Create / Edit Service Policy (no raw JSON in UI). */
+function getDefaultServicePolicyForm() {
+  return {
+    policy_type: 'warranty',
+    product_category: '',
+    product_id: null,
+    is_active: true,
+    warranty_period_months: 12,
+    charge_if_out: true,
+    charge_if_in: false,
+    free_if_in: true,
+    free_if_out: false,
+    visit_fee: '',
+    parts_oem_preferred: false,
+    parts_max_cost: '',
+    labor_rate_per_hour: '',
+    minimum_service_charge: '',
+    replacement_within_days: '',
+    other_policy_notes: '',
+  }
+}
+
+/** Build API `rules` object from friendly form fields (matches policy_matcher expectations). */
+function servicePolicyRulesFromForm(form) {
+  const t = form.policy_type
+  if (t === 'warranty') {
+    const months = parseInt(String(form.warranty_period_months), 10)
+    return {
+      warranty_period_months: Number.isFinite(months) && months > 0 ? months : 12,
+    }
+  }
+  if (t === 'chargeable') {
+    const charge_if = []
+    if (form.charge_if_out) charge_if.push('out_of_warranty')
+    if (form.charge_if_in) charge_if.push('in_warranty')
+    const free_if = []
+    if (form.free_if_in) free_if.push('in_warranty')
+    if (form.free_if_out) free_if.push('out_of_warranty')
+    const rules = { charge_if, free_if }
+    const vf = parseFloat(String(form.visit_fee).replace(/,/g, ''))
+    if (Number.isFinite(vf) && vf >= 0 && String(form.visit_fee).trim() !== '') {
+      rules.pricing = { ...(rules.pricing || {}), visit_fee: vf }
+    }
+    return rules
+  }
+  if (t === 'parts') {
+    const rules = {}
+    if (form.parts_oem_preferred) rules.oem_parts_preferred = true
+    const mc = parseFloat(String(form.parts_max_cost).replace(/,/g, ''))
+    if (Number.isFinite(mc) && mc > 0) rules.max_parts_cost = mc
+    return rules
+  }
+  if (t === 'pricing') {
+    const rules = {}
+    const lr = parseFloat(String(form.labor_rate_per_hour).replace(/,/g, ''))
+    const minc = parseFloat(String(form.minimum_service_charge).replace(/,/g, ''))
+    if (Number.isFinite(lr) && lr >= 0 && String(form.labor_rate_per_hour).trim() !== '') {
+      rules.labor_rate_per_hour = lr
+    }
+    if (Number.isFinite(minc) && minc >= 0 && String(form.minimum_service_charge).trim() !== '') {
+      rules.minimum_service_charge = minc
+    }
+    return rules
+  }
+  if (t === 'replacement') {
+    const days = parseInt(String(form.replacement_within_days), 10)
+    if (Number.isFinite(days) && days > 0) {
+      return { replacement_within_days: days }
+    }
+    return {}
+  }
+  if (t === 'other') {
+    const raw = String(form.other_policy_notes || '').trim()
+    if (!raw) return {}
+    try {
+      const parsed = JSON.parse(raw)
+      return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : { notes: raw }
+    } catch {
+      return { notes: raw }
+    }
+  }
+  const notes = String(form.other_policy_notes || '').trim()
+  return notes ? { notes } : {}
+}
+
+/** Hydrate form from API policy + rules JSON. */
+function formFieldsFromServicePolicy(policy) {
+  const rules = parseServicePolicyRules(policy.rules)
+  const base = getDefaultServicePolicyForm()
+  const rawType = String(policy.policy_type || 'warranty').toLowerCase()
+  base.policy_type = SERVICE_POLICY_TYPES.includes(rawType) ? rawType : 'other'
+  base.product_category = policy.product_category || ''
+  base.product_id = policy.product_id ?? null
+  base.is_active = policy.is_active !== false
+
+  if (base.policy_type === 'other') {
+    if (rules.notes != null && String(rules.notes).trim()) {
+      base.other_policy_notes = String(rules.notes)
+    } else if (Object.keys(rules).length > 0) {
+      try {
+        base.other_policy_notes = JSON.stringify(rules, null, 2)
+      } catch {
+        base.other_policy_notes = ''
+      }
+    }
+    return base
+  }
+
+  switch (base.policy_type) {
+    case 'warranty':
+      base.warranty_period_months = rules.warranty_period_months ?? 12
+      break
+    case 'chargeable': {
+      const ci = Array.isArray(rules.charge_if) ? rules.charge_if : []
+      const fi = Array.isArray(rules.free_if) ? rules.free_if : []
+      base.charge_if_out = ci.includes('out_of_warranty')
+      base.charge_if_in = ci.includes('in_warranty')
+      base.free_if_in = fi.includes('in_warranty')
+      base.free_if_out = fi.includes('out_of_warranty')
+      if (rules.pricing && rules.pricing.visit_fee != null && rules.pricing.visit_fee !== '') {
+        base.visit_fee = String(rules.pricing.visit_fee)
+      }
+      break
+    }
+    case 'parts':
+      base.parts_oem_preferred = !!rules.oem_parts_preferred
+      if (rules.max_parts_cost != null && rules.max_parts_cost !== '') {
+        base.parts_max_cost = String(rules.max_parts_cost)
+      }
+      break
+    case 'pricing':
+      if (rules.labor_rate_per_hour != null && rules.labor_rate_per_hour !== '') {
+        base.labor_rate_per_hour = String(rules.labor_rate_per_hour)
+      }
+      if (rules.minimum_service_charge != null && rules.minimum_service_charge !== '') {
+        base.minimum_service_charge = String(rules.minimum_service_charge)
+      }
+      break
+    case 'replacement':
+      if (rules.replacement_within_days != null && rules.replacement_within_days !== '') {
+        base.replacement_within_days = String(rules.replacement_within_days)
+      }
+      break
+    default:
+      if (rules.notes != null && String(rules.notes).trim()) {
+        base.other_policy_notes = String(rules.notes)
+      } else if (Object.keys(rules).length > 0) {
+        try {
+          base.other_policy_notes = JSON.stringify(rules, null, 2)
+        } catch {
+          base.other_policy_notes = ''
+        }
+      }
+  }
+  return base
+}
+
+function servicePolicyListSummary(policy) {
+  const rules = parseServicePolicyRules(policy.rules)
+  const t = String(policy.policy_type || '').toLowerCase()
+  if (t === 'warranty' && rules.warranty_period_months != null) {
+    return `Warranty: ${rules.warranty_period_months} months`
+  }
+  if (t === 'chargeable') {
+    const parts = []
+    if (Array.isArray(rules.charge_if) && rules.charge_if.length) parts.push(`charges when: ${rules.charge_if.join(', ')}`)
+    if (rules.pricing?.visit_fee != null) parts.push(`visit fee: ${rules.pricing.visit_fee}`)
+    return parts.length ? parts.join(' · ') : 'Chargeable service rules'
+  }
+  if (t === 'parts') {
+    if (rules.max_parts_cost != null) return `Parts: max cost ${rules.max_parts_cost}`
+    if (rules.oem_parts_preferred) return 'Parts: OEM preferred'
+    return 'Parts policy'
+  }
+  if (t === 'pricing') {
+    const p = []
+    if (rules.labor_rate_per_hour != null) p.push(`labor ${rules.labor_rate_per_hour}/hr`)
+    if (rules.minimum_service_charge != null) p.push(`min ${rules.minimum_service_charge}`)
+    return p.length ? `Pricing: ${p.join(', ')}` : 'Pricing policy'
+  }
+  if (t === 'replacement' && rules.replacement_within_days != null) {
+    return `Replacement within ${rules.replacement_within_days} days`
+  }
+  const keys = Object.keys(rules)
+  if (keys.length === 0) return 'No rule details'
+  return `${keys.length} rule field(s)`
+}
+
 export default function OrganizationAdminDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -136,7 +342,8 @@ export default function OrganizationAdminDashboard() {
     target_hours: 24,
     product_category: '',
     priority_overrides: {},
-    business_hours_only: false
+    business_hours_only: false,
+    is_active: true
   })
   
   const [integrationForm, setIntegrationForm] = useState({
@@ -164,8 +371,12 @@ export default function OrganizationAdminDashboard() {
     password: '',
     role: 'customer',
     country_id: null,
+    country_code: null,
     state_id: null,
+    state_name: null,
+    state_code: null,
     city_id: null,
+    city_name: null,
     engineer_skill_level: '',
     engineer_specialization: []
   })
@@ -198,14 +409,7 @@ export default function OrganizationAdminDashboard() {
     notes: ''
   })
   
-  const [servicePolicyForm, setServicePolicyForm] = useState({
-    policy_type: 'warranty',
-    rules: {},
-    product_category: '',
-    product_id: null,
-    is_active: true,
-    _rulesRaw: '{}' // Store raw JSON string for textarea
-  })
+  const [servicePolicyForm, setServicePolicyForm] = useState(() => getDefaultServicePolicyForm())
 
   const [partnerForm, setPartnerForm] = useState({
     name: '',
@@ -512,6 +716,101 @@ export default function OrganizationAdminDashboard() {
     }
   }
 
+  /** States for Create/Edit User modal (supports DB id or country_code-only). Returns fetched list. */
+  const loadUserFormStates = async (countryId, countryCode) => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setStates([])
+      return []
+    }
+    const headers = { Authorization: `Bearer ${token}` }
+    try {
+      let url
+      if (countryId != null && countryId !== '') {
+        url = `${getApiBase()}/locations/states?country_id=${countryId}&use_api=true`
+      } else if (countryCode) {
+        url = `${getApiBase()}/locations/states?country_code=${encodeURIComponent(countryCode)}&use_api=true`
+      } else {
+        setStates([])
+        return []
+      }
+      const res = await fetch(url, { headers })
+      if (!res.ok) {
+        setStates([])
+        return []
+      }
+      const data = await res.json()
+      const list = Array.isArray(data) ? data : []
+      setStates(list)
+      return list
+    } catch {
+      setStates([])
+      return []
+    }
+  }
+
+  /** Cities for User modal when state comes from static API (id null). */
+  const loadUserFormCities = async (stateRow, countryId, countryCode) => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setCities([])
+      return []
+    }
+    const headers = { Authorization: `Bearer ${token}` }
+    try {
+      if (!stateRow) {
+        setCities([])
+        return []
+      }
+      if (stateRow.id != null && stateRow.id !== '') {
+        const res = await fetch(`${getApiBase()}/locations/cities?state_id=${stateRow.id}&use_api=true`, { headers })
+        if (!res.ok) {
+          setCities([])
+          return []
+        }
+        const data = await res.json()
+        const list = Array.isArray(data) ? data : []
+        setCities(list)
+        return list
+      }
+      const cc = String(countryCode || '').toUpperCase()
+      const isIndia = cc === 'IN' || Number(countryId) === 1
+      if (isIndia && stateRow.name) {
+        const res = await fetch(
+          `${getApiBase()}/locations/india/states/${encodeURIComponent(stateRow.name)}/cities?use_api=true`,
+          { headers }
+        )
+        if (!res.ok) {
+          setCities([])
+          return []
+        }
+        const data = await res.json()
+        const list = Array.isArray(data) ? data : []
+        setCities(list)
+        return list
+      }
+      if (cc && stateRow.code) {
+        const res = await fetch(
+          `${getApiBase()}/locations/countries/${cc}/states/${stateRow.code}/cities?use_api=true`,
+          { headers }
+        )
+        if (!res.ok) {
+          setCities([])
+          return []
+        }
+        const data = await res.json()
+        const list = Array.isArray(data) ? data : []
+        setCities(list)
+        return list
+      }
+      setCities([])
+      return []
+    } catch {
+      setCities([])
+      return []
+    }
+  }
+
   const loadDashboardData = async () => {
     const token = localStorage.getItem('token')
     if (!token) {
@@ -772,8 +1071,8 @@ export default function OrganizationAdminDashboard() {
         })
         loadDashboardData()
       } else {
-        const error = await response.json()
-        alert(error.detail || 'Error saving product')
+        const error = await response.json().catch(() => ({}))
+        alert(formatApiError(error.detail) || 'Error saving product')
       }
     } catch (error) {
       console.error('Error saving product:', error)
@@ -947,7 +1246,8 @@ export default function OrganizationAdminDashboard() {
           target_hours: 24,
           product_category: '',
           priority_overrides: {},
-          business_hours_only: false
+          business_hours_only: false,
+          is_active: true
         })
         loadDashboardData()
       } else {
@@ -1027,17 +1327,33 @@ export default function OrganizationAdminDashboard() {
       const cityRequiredRoles = ['city_admin', 'support_engineer']
       const stateRequiredRoles = ['state_admin']
       const countryRequiredRoles = ['country_admin']
-      if (cityRequiredRoles.includes(userForm.role) && !userForm.city_id) {
-        alert('City is required for this role')
-        return
-      }
-      if (stateRequiredRoles.includes(userForm.role) && !userForm.state_id) {
-        alert('State is required for this role')
-        return
-      }
-      if (countryRequiredRoles.includes(userForm.role) && !userForm.country_id) {
+      if (countryRequiredRoles.includes(userForm.role) && userForm.country_id == null && !userForm.country_code) {
         alert('Country is required for this role')
         return
+      }
+      if (stateRequiredRoles.includes(userForm.role)) {
+        if (userForm.country_id == null && !userForm.country_code) {
+          alert('Country is required for this role')
+          return
+        }
+        if (userForm.state_id == null && !userForm.state_name && !userForm.state_code) {
+          alert('State is required for this role')
+          return
+        }
+      }
+      if (cityRequiredRoles.includes(userForm.role)) {
+        if (userForm.country_id == null && !userForm.country_code) {
+          alert('Country is required for this role')
+          return
+        }
+        if (userForm.state_id == null && !userForm.state_name && !userForm.state_code) {
+          alert('State is required for this role')
+          return
+        }
+        if (userForm.city_id == null && !userForm.city_name) {
+          alert('City is required for this role')
+          return
+        }
       }
 
       const url = editingUser 
@@ -1045,59 +1361,25 @@ export default function OrganizationAdminDashboard() {
         : getApiBase() + '/users/'
       const method = editingUser ? 'PUT' : 'POST'
       
-      // Convert location IDs to integers
-      // Handle cases where state_id/city_id might be codes instead of IDs
-      let countryId = null
-      let stateId = null
-      let cityId = null
+      let countryId = userForm.country_id != null ? Number(userForm.country_id) : null
+      if (Number.isNaN(countryId)) countryId = null
+      let stateId = userForm.state_id != null ? Number(userForm.state_id) : null
+      if (Number.isNaN(stateId)) stateId = null
+      let cityId = userForm.city_id != null ? Number(userForm.city_id) : null
+      if (Number.isNaN(cityId)) cityId = null
 
-      if (userForm.country_id) {
-        countryId = typeof userForm.country_id === 'string' ? parseInt(userForm.country_id) : userForm.country_id
-      }
-
-      if (userForm.state_id) {
-        // Check if it's a numeric string or already a number
-        if (typeof userForm.state_id === 'string') {
-          // Try to find the state by code and get its ID
-          const state = states.find(s => {
-            if (s.id) {
-              return s.id.toString() === userForm.state_id
-            } else {
-              return s.code === userForm.state_id || s.name === userForm.state_id
-            }
-          })
-          stateId = state?.id ? parseInt(state.id) : (parseInt(userForm.state_id) || null)
-        } else {
-          stateId = userForm.state_id
-        }
-      }
-
-      if (userForm.city_id) {
-        // Check if it's a numeric string or already a number
-        if (typeof userForm.city_id === 'string') {
-          // Try to find the city by code and get its ID
-          const city = cities.find(c => {
-            if (c.id) {
-              return c.id.toString() === userForm.city_id
-            } else {
-              return c.code === userForm.city_id || c.name === userForm.city_id
-            }
-          })
-          cityId = city?.id ? parseInt(city.id) : (parseInt(userForm.city_id) || null)
-        } else {
-          cityId = userForm.city_id
-        }
-      }
-      
-      // Prepare user data
       const userData = {
         email: userForm.email.trim(),
         phone: userForm.phone.trim(),
         full_name: userForm.full_name.trim(),
         role: userForm.role,
         country_id: countryId,
+        country_code: userForm.country_code || null,
         state_id: stateId,
+        state_name: userForm.state_name || null,
+        state_code: userForm.state_code || null,
         city_id: cityId,
+        city_name: userForm.city_name || null,
         engineer_skill_level: userForm.engineer_skill_level || null,
         engineer_specialization: userForm.engineer_specialization || []
       }
@@ -1126,11 +1408,17 @@ export default function OrganizationAdminDashboard() {
           password: '',
           role: 'customer',
           country_id: null,
+          country_code: null,
           state_id: null,
+          state_name: null,
+          state_code: null,
           city_id: null,
+          city_name: null,
           engineer_skill_level: '',
           engineer_specialization: []
         })
+        setStates([])
+        setCities([])
         loadDashboardData()
         alert(editingUser ? 'User updated successfully' : 'User created successfully')
       } else {
@@ -1143,46 +1431,58 @@ export default function OrganizationAdminDashboard() {
     }
   }
 
-  const handleEditUser = (user) => {
+  const handleEditUser = async (user) => {
     setEditingUser(user)
+    const cRow = countries.find((x) => x.id === user.country_id)
+    const ccode = cRow?.code ? String(cRow.code).toUpperCase() : (user.country_id === 1 ? 'IN' : null)
     setUserForm({
       email: user.email,
       phone: user.phone,
       full_name: user.full_name,
-      password: '', // Don't pre-fill password
+      password: '',
       role: user.role,
       country_id: user.country_id || null,
+      country_code: ccode,
       state_id: user.state_id || null,
+      state_name: null,
+      state_code: null,
       city_id: user.city_id || null,
+      city_name: null,
       engineer_skill_level: user.engineer_skill_level || '',
       engineer_specialization: user.engineer_specialization ? (Array.isArray(user.engineer_specialization) ? user.engineer_specialization : user.engineer_specialization.split(',')) : []
     })
     setShowUserModal(true)
+    const stList = await loadUserFormStates(user.country_id, ccode)
+    const stRow = Array.isArray(stList) ? stList.find((s) => s.id === user.state_id) : null
+    if (stRow) {
+      await loadUserFormCities(stRow, user.country_id, ccode)
+    } else if (user.state_id) {
+      await loadUserFormCities({ id: user.state_id, name: '', code: '' }, user.country_id, ccode)
+    } else {
+      setCities([])
+    }
   }
 
   const handleCreateServicePolicy = async () => {
     const token = localStorage.getItem('token')
-    
-    // Parse rules from raw JSON string
-    let rules = servicePolicyForm.rules
-    if (servicePolicyForm._rulesRaw !== undefined) {
-      try {
-        rules = JSON.parse(servicePolicyForm._rulesRaw)
-      } catch (err) {
-        alert('Invalid JSON format in Rules field. Please fix the JSON syntax before saving.')
-        return
-      }
-    }
-    
+    const rules = servicePolicyRulesFromForm(servicePolicyForm)
+
     const payload = {
       policy_type: servicePolicyForm.policy_type,
-      rules: rules,
+      rules,
       product_category: servicePolicyForm.product_category || null,
       product_id: servicePolicyForm.product_id || null,
       is_active: servicePolicyForm.is_active
     }
     
     try {
+      if (editingServicePolicy != null) {
+        const pid = editingServicePolicy.id
+        if (pid == null || pid === '') {
+          alert('Cannot update: policy is missing an id. Reload the page and try again.')
+          return
+        }
+      }
       const url = editingServicePolicy 
         ? `${getApiBase()}/org-admin/service-policies/${editingServicePolicy.id}`
         : getApiBase() + '/org-admin/service-policies'
@@ -1200,18 +1500,17 @@ export default function OrganizationAdminDashboard() {
       if (response.ok) {
         setShowServicePolicyModal(false)
         setEditingServicePolicy(null)
-        setServicePolicyForm({
-          policy_type: 'warranty',
-          rules: {},
-          product_category: '',
-          product_id: null,
-          is_active: true,
-          _rulesRaw: '{}'
-        })
+        setServicePolicyForm(getDefaultServicePolicyForm())
         loadDashboardData()
       } else {
-        const error = await response.json()
-        alert(error.detail || 'Error saving service policy')
+        let msg = 'Error saving service policy'
+        try {
+          const error = await response.json()
+          msg = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail || error)
+        } catch {
+          msg = `${msg} (${response.status})`
+        }
+        alert(msg)
       }
     } catch (error) {
       console.error('Error saving service policy:', error)
@@ -1220,20 +1519,20 @@ export default function OrganizationAdminDashboard() {
   }
 
   const handleEditServicePolicy = (policy) => {
+    if (policy == null || policy.id == null) {
+      alert('Invalid policy: missing id.')
+      return
+    }
     setEditingServicePolicy(policy)
-    const rules = policy.rules || {}
-    setServicePolicyForm({
-      policy_type: policy.policy_type,
-      rules: rules,
-      product_category: policy.product_category || '',
-      product_id: policy.product_id || null,
-      is_active: policy.is_active !== undefined ? policy.is_active : true,
-      _rulesRaw: JSON.stringify(rules, null, 2)
-    })
+    setServicePolicyForm(formFieldsFromServicePolicy(policy))
     setShowServicePolicyModal(true)
   }
 
   const handleDeleteServicePolicy = async (policyId) => {
+    if (policyId == null || policyId === '') {
+      alert('Invalid policy id.')
+      return
+    }
     if (!confirm('Are you sure you want to delete this service policy?')) return
     
     const token = localStorage.getItem('token')
@@ -1248,8 +1547,14 @@ export default function OrganizationAdminDashboard() {
       if (response.ok) {
         loadDashboardData()
       } else {
-        const error = await response.json()
-        alert(error.detail || 'Error deleting service policy')
+        let msg = 'Error deleting service policy'
+        try {
+          const error = await response.json()
+          msg = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail || error)
+        } catch {
+          msg = `${msg} (${response.status})`
+        }
+        alert(msg)
       }
     } catch (error) {
       console.error('Error deleting service policy:', error)
@@ -3087,7 +3392,8 @@ export default function OrganizationAdminDashboard() {
                         target_hours: 24,
                         product_category: '',
                         priority_overrides: {},
-                        business_hours_only: false
+                        business_hours_only: false,
+                        is_active: true
                       })
                       setShowSLAModal(true)
                     }}>
@@ -3101,7 +3407,18 @@ export default function OrganizationAdminDashboard() {
                     <div className="text-center py-8">
                       <Target size={48} className="mx-auto text-gray-400 mb-4" />
                       <p className="text-gray-600 mb-4">No SLA policies configured</p>
-                      <Button size="sm" onClick={() => setShowSLAModal(true)}>
+                      <Button size="sm" onClick={() => {
+                        setEditingSLA(null)
+                        setSlaForm({
+                          sla_type: 'resolution',
+                          target_hours: 24,
+                          product_category: '',
+                          priority_overrides: {},
+                          business_hours_only: false,
+                          is_active: true
+                        })
+                        setShowSLAModal(true)
+                      }}>
                         Create SLA Policy
                       </Button>
                     </div>
@@ -3111,9 +3428,10 @@ export default function OrganizationAdminDashboard() {
                         <div key={policy.id} className="p-4 border rounded-lg">
                           <div className="flex items-start justify-between mb-2">
                             <div>
-                              <h4 className="font-semibold capitalize">{policy.sla_type?.replace('_', ' ')}</h4>
+                              <h4 className="font-semibold capitalize">{String(policy.sla_type || '').replace(/_/g, ' ')}</h4>
                               <p className="text-sm text-gray-600">
                                 Target: {policy.target_hours} hours
+                                {policy.business_hours_only ? ' · Business hours only' : ''}
                               </p>
                               {policy.product_category && (
                                 <Badge variant="outline" className="mt-1">
@@ -3125,17 +3443,18 @@ export default function OrganizationAdminDashboard() {
                               {policy.is_active ? 'Active' : 'Inactive'}
                             </Badge>
                           </div>
-                          <div className="mt-2">
-                            <pre className="text-xs bg-gray-50 p-2 rounded overflow-auto max-h-32">
-                              {JSON.stringify(policy.rules, null, 2)}
-                            </pre>
-                          </div>
+                          {policy.priority_overrides && Object.keys(policy.priority_overrides).length > 0 && (
+                            <div className="mt-2 text-xs text-gray-600">
+                              <span className="font-medium">Priority overrides: </span>
+                              {JSON.stringify(policy.priority_overrides)}
+                            </div>
+                          )}
                           <div className="flex gap-2 mt-3">
-                            <Button variant="ghost" size="sm" onClick={() => handleEditServicePolicy(policy)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleEditSLA(policy)}>
                               <Edit size={14} className="mr-1" />
                               Edit
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDeleteServicePolicy(policy.id)} className="text-red-600 hover:text-red-700">
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteSLA(policy.id)} className="text-red-600 hover:text-red-700">
                               <Trash2 size={14} className="mr-1" />
                               Delete
                             </Button>
@@ -3157,14 +3476,7 @@ export default function OrganizationAdminDashboard() {
                     </CardTitle>
                     <Button size="sm" onClick={() => {
                       setEditingServicePolicy(null)
-        setServicePolicyForm({
-          policy_type: 'warranty',
-          rules: {},
-          product_category: '',
-          product_id: null,
-          is_active: true,
-          _rulesRaw: '{}'
-        })
+                      setServicePolicyForm(getDefaultServicePolicyForm())
                       setShowServicePolicyModal(true)
                     }}>
                       <Plus size={14} className="mr-1" />
@@ -3179,14 +3491,7 @@ export default function OrganizationAdminDashboard() {
                       <p className="text-gray-600 mb-4">No service policies configured</p>
                       <Button size="sm" onClick={() => {
                         setEditingServicePolicy(null)
-        setServicePolicyForm({
-          policy_type: 'warranty',
-          rules: {},
-          product_category: '',
-          product_id: null,
-          is_active: true,
-          _rulesRaw: '{}'
-        })
+                        setServicePolicyForm(getDefaultServicePolicyForm())
                         setShowServicePolicyModal(true)
                       }}>
                         <Plus size={14} className="mr-1" />
@@ -3199,7 +3504,8 @@ export default function OrganizationAdminDashboard() {
                         <div key={policy.id} className="p-4 border rounded-lg">
                           <div className="flex items-start justify-between mb-2">
                             <div>
-                              <h4 className="font-semibold capitalize">{policy.policy_type?.replace('_', ' ')}</h4>
+                              <h4 className="font-semibold capitalize">{policy.policy_type?.replace(/_/g, ' ')}</h4>
+                              <p className="text-sm text-gray-600 mt-1">{servicePolicyListSummary(policy)}</p>
                               {policy.product_category && (
                                 <Badge variant="outline" className="mt-1">
                                   {policy.product_category}
@@ -3211,11 +3517,13 @@ export default function OrganizationAdminDashboard() {
                             </Badge>
                           </div>
                           <div className="flex gap-2 mt-3">
-                            <Button variant="ghost" size="sm">
-                              <Edit size={14} />
+                            <Button type="button" variant="ghost" size="sm" onClick={() => handleEditServicePolicy(policy)}>
+                              <Edit size={14} className="mr-1" />
+                              Edit
                             </Button>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 size={14} />
+                            <Button type="button" variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => handleDeleteServicePolicy(policy.id)}>
+                              <Trash2 size={14} className="mr-1" />
+                              Delete
                             </Button>
                           </div>
                         </div>
@@ -3565,11 +3873,17 @@ export default function OrganizationAdminDashboard() {
                       password: '',
                       role: 'customer',
                       country_id: null,
+                      country_code: null,
                       state_id: null,
+                      state_name: null,
+                      state_code: null,
                       city_id: null,
+                      city_name: null,
                       engineer_skill_level: '',
                       engineer_specialization: []
                     })
+                    setStates([])
+                    setCities([])
                     setShowUserModal(true)
                   }}>
                     <Plus size={16} className="mr-2" />
@@ -4425,7 +4739,10 @@ export default function OrganizationAdminDashboard() {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <CardTitle>{editingSLA ? 'Edit SLA Policy' : 'Create SLA Policy'}</CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setShowSLAModal(false)}>
+                  <Button variant="ghost" size="sm" onClick={() => {
+                    setShowSLAModal(false)
+                    setEditingSLA(null)
+                  }}>
                     <X size={20} />
                   </Button>
                 </div>
@@ -4475,12 +4792,22 @@ export default function OrganizationAdminDashboard() {
                   />
                   <Label>Business Hours Only</Label>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={slaForm.is_active !== false}
+                    onCheckedChange={(val) => setSlaForm({...slaForm, is_active: val})}
+                  />
+                  <Label>Policy active</Label>
+                </div>
                 <div className="flex gap-2">
                   <Button onClick={handleCreateSLAPolicy} className="flex-1">
                     <Save size={16} className="mr-2" />
                     {editingSLA ? 'Update Policy' : 'Create Policy'}
                   </Button>
-                  <Button variant="outline" onClick={() => setShowSLAModal(false)}>
+                  <Button variant="outline" onClick={() => {
+                    setShowSLAModal(false)
+                    setEditingSLA(null)
+                  }}>
                     Cancel
                   </Button>
                 </div>
@@ -5630,11 +5957,17 @@ export default function OrganizationAdminDashboard() {
                       password: '',
                       role: 'customer',
                       country_id: null,
+                      country_code: null,
                       state_id: null,
+                      state_name: null,
+                      state_code: null,
                       city_id: null,
+                      city_name: null,
                       engineer_skill_level: '',
                       engineer_specialization: []
                     })
+                    setStates([])
+                    setCities([])
                   }}>
                     <X size={20} />
                   </Button>
@@ -5718,123 +6051,246 @@ export default function OrganizationAdminDashboard() {
                   )}
                 </div>
                 
-                {/* Location fields */}
-                <div className="grid grid-cols-3 gap-4">
+                {/* Location fields — API lists may use id=null; backend resolves name/code to DB rows */}
+                {(() => {
+                  const needCountry = ['country_admin', 'state_admin', 'city_admin', 'support_engineer'].includes(userForm.role)
+                  const needState = ['state_admin', 'city_admin', 'support_engineer'].includes(userForm.role)
+                  const needCity = ['city_admin', 'support_engineer'].includes(userForm.role)
+                  const countrySelectValue =
+                    userForm.country_id != null && userForm.country_id !== ''
+                      ? String(userForm.country_id)
+                      : userForm.country_code
+                        ? `code:${userForm.country_code}`
+                        : undefined
+                  const stateSelectValue =
+                    userForm.state_id != null && userForm.state_id !== ''
+                      ? `id:${userForm.state_id}`
+                      : userForm.state_name || userForm.state_code
+                        ? `s:${encodeURIComponent(userForm.state_name || '')}|${encodeURIComponent(userForm.state_code || '')}`
+                        : undefined
+                  const citySelectValue =
+                    userForm.city_id != null && userForm.city_id !== ''
+                      ? `id:${userForm.city_id}`
+                      : userForm.city_name
+                        ? `c:${encodeURIComponent(userForm.city_name)}`
+                        : undefined
+                  const canPickState = userForm.country_id != null || userForm.country_code
+                  const canPickCity =
+                    canPickState &&
+                    (userForm.state_id != null ||
+                      userForm.state_name ||
+                      userForm.state_code)
+                  return (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label>Country (Optional)</Label>
+                    <Label>Country{needCountry ? ' *' : ''}</Label>
                     <Select 
-                      value={userForm.country_id || undefined} 
+                      value={countrySelectValue} 
                       onValueChange={(val) => {
-                        const countryId = val === 'none' ? null : parseInt(val)
-                        setUserForm({...userForm, country_id: countryId, state_id: null, city_id: null})
-                        if (countryId) {
-                          loadStates(countryId)
-                        } else {
+                        if (val === 'none') {
+                          setUserForm({
+                            ...userForm,
+                            country_id: null,
+                            country_code: null,
+                            state_id: null,
+                            state_name: null,
+                            state_code: null,
+                            city_id: null,
+                            city_name: null
+                          })
                           setStates([])
                           setCities([])
+                          return
                         }
+                        let nextId = null
+                        let nextCode = null
+                        if (String(val).startsWith('code:')) {
+                          nextCode = String(val).slice(5).toUpperCase()
+                          const row = countries.find((x) => String(x.code || '').toUpperCase() === nextCode)
+                          if (row && row.id != null && row.id !== '') nextId = Number(row.id)
+                        } else {
+                          nextId = parseInt(val, 10)
+                          const row = countries.find((x) => String(x.id) === String(val))
+                          if (row?.code) nextCode = String(row.code).toUpperCase()
+                        }
+                        setUserForm({
+                          ...userForm,
+                          country_id: Number.isFinite(nextId) ? nextId : null,
+                          country_code: nextCode,
+                          state_id: null,
+                          state_name: null,
+                          state_code: null,
+                          city_id: null,
+                          city_name: null
+                        })
+                        setCities([])
+                        loadUserFormStates(nextId, nextCode)
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select country" />
+                        <SelectValue placeholder={needCountry ? 'Select country' : 'Optional'} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {countries.map((country) => (
-                          <SelectItem key={country.id} value={country.id.toString()}>
-                            {country.name}
-                          </SelectItem>
-                        ))}
+                        {!needCountry && <SelectItem value="none">None</SelectItem>}
+                        {countries.map((country) => {
+                          const code = country.code ? String(country.code).toUpperCase() : ''
+                          const itemValue =
+                            country.id != null && country.id !== ''
+                              ? String(country.id)
+                              : code
+                                ? `code:${code}`
+                                : null
+                          if (!itemValue) return null
+                          return (
+                            <SelectItem key={itemValue} value={itemValue}>
+                              {country.name}
+                            </SelectItem>
+                          )
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label>State (Optional)</Label>
+                    <Label>State{needState ? ' *' : ''}</Label>
                     <Select 
-                      value={userForm.state_id ? (typeof userForm.state_id === 'number' ? userForm.state_id.toString() : userForm.state_id) : undefined} 
-                      onValueChange={(val) => {
+                      value={stateSelectValue} 
+                      onValueChange={async (val) => {
                         if (val === 'none') {
-                          setUserForm({...userForm, state_id: null, city_id: null})
+                          setUserForm({
+                            ...userForm,
+                            state_id: null,
+                            state_name: null,
+                            state_code: null,
+                            city_id: null,
+                            city_name: null
+                          })
                           setCities([])
                           return
                         }
-                        // Find the state to get its ID
-                        const state = states.find(s => {
-                          if (s.id) {
-                            return s.id.toString() === val
-                          } else {
-                            return s.code === val || s.name === val
-                          }
-                        })
-                        // Use the actual ID if available, otherwise try to parse
-                        const stateId = state?.id ? state.id : (parseInt(val) || val)
-                        setUserForm({...userForm, state_id: stateId, city_id: null})
-                        if (stateId) {
-                          loadCities(stateId)
-                        } else {
+                        if (String(val).startsWith('id:')) {
+                          const sid = parseInt(String(val).slice(3), 10)
+                          const row = states.find((s) => s.id === sid)
+                          setUserForm({
+                            ...userForm,
+                            state_id: Number.isFinite(sid) ? sid : null,
+                            state_name: null,
+                            state_code: null,
+                            city_id: null,
+                            city_name: null
+                          })
                           setCities([])
+                          if (row) {
+                            await loadUserFormCities(row, userForm.country_id, userForm.country_code)
+                          }
+                          return
+                        }
+                        if (String(val).startsWith('s:')) {
+                          const body = String(val).slice(2)
+                          const bar = body.indexOf('|')
+                          const encName = bar >= 0 ? body.slice(0, bar) : body
+                          const encCode = bar >= 0 ? body.slice(bar + 1) : ''
+                          const nm = decodeURIComponent(encName || '')
+                          const sc = decodeURIComponent(encCode || '') || null
+                          const row =
+                            states.find(
+                              (s) =>
+                                s.name === nm &&
+                                (!sc || !s.code || String(s.code).toUpperCase() === String(sc).toUpperCase())
+                            ) || { id: null, name: nm, code: sc }
+                          setUserForm({
+                            ...userForm,
+                            state_id: null,
+                            state_name: nm || null,
+                            state_code: sc,
+                            city_id: null,
+                            city_name: null
+                          })
+                          setCities([])
+                          await loadUserFormCities(row, userForm.country_id, userForm.country_code)
                         }
                       }}
-                      disabled={!userForm.country_id}
+                      disabled={!canPickState}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select state" />
+                        <SelectValue placeholder={needState ? 'Select state' : 'Optional'} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
+                        {!needState && <SelectItem value="none">None</SelectItem>}
                         {states.map((state) => {
-                          // Always use ID if available, otherwise use code or name
-                          const value = state.id ? state.id.toString() : (state.code || state.name || `state-${state.name}`)
+                          const itemValue =
+                            state.id != null && state.id !== ''
+                              ? `id:${state.id}`
+                              : `s:${encodeURIComponent(state.name || '')}|${encodeURIComponent(state.code || '')}`
                           return (
-                            <SelectItem key={value} value={value}>
+                            <SelectItem key={itemValue} value={itemValue}>
                               {state.name}
                             </SelectItem>
                           )
                         })}
+                        {editingUser &&
+                          userForm.state_id != null &&
+                          !states.some((s) => s.id === userForm.state_id) && (
+                            <SelectItem value={`id:${userForm.state_id}`}>
+                              Current: state #{userForm.state_id}
+                            </SelectItem>
+                          )}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label>City (Optional)</Label>
+                    <Label>City{needCity ? ' *' : ''}</Label>
                     <Select 
-                      value={userForm.city_id ? (typeof userForm.city_id === 'number' ? userForm.city_id.toString() : userForm.city_id) : undefined} 
+                      value={citySelectValue} 
                       onValueChange={(val) => {
                         if (val === 'none') {
-                          setUserForm({...userForm, city_id: null})
+                          setUserForm({ ...userForm, city_id: null, city_name: null })
                           return
                         }
-                        // Find the city to get its ID
-                        const city = cities.find(c => {
-                          if (c.id) {
-                            return c.id.toString() === val
-                          } else {
-                            return c.code === val || c.name === val
-                          }
-                        })
-                        // Use the actual ID if available, otherwise try to parse
-                        const cityId = city?.id ? city.id : (parseInt(val) || val)
-                        setUserForm({...userForm, city_id: cityId})
+                        if (String(val).startsWith('id:')) {
+                          const cid = parseInt(String(val).slice(3), 10)
+                          setUserForm({
+                            ...userForm,
+                            city_id: Number.isFinite(cid) ? cid : null,
+                            city_name: null
+                          })
+                          return
+                        }
+                        if (String(val).startsWith('c:')) {
+                          const name = decodeURIComponent(String(val).slice(2))
+                          setUserForm({ ...userForm, city_id: null, city_name: name || null })
+                        }
                       }}
-                      disabled={!userForm.state_id}
+                      disabled={!canPickCity}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select city" />
+                        <SelectValue placeholder={needCity ? 'Select city' : 'Optional'} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
+                        {!needCity && <SelectItem value="none">None</SelectItem>}
                         {cities.map((city) => {
-                          // Always use ID if available, otherwise use code or name
-                          const value = city.id ? city.id.toString() : (city.code || city.name || `city-${city.name}`)
+                          const itemValue =
+                            city.id != null && city.id !== ''
+                              ? `id:${city.id}`
+                              : `c:${encodeURIComponent(city.name || '')}`
                           return (
-                            <SelectItem key={value} value={value}>
+                            <SelectItem key={itemValue} value={itemValue}>
                               {city.name}
                             </SelectItem>
                           )
                         })}
+                        {editingUser &&
+                          userForm.city_id != null &&
+                          !cities.some((c) => c.id === userForm.city_id) && (
+                            <SelectItem value={`id:${userForm.city_id}`}>
+                              Current: city #{userForm.city_id}
+                            </SelectItem>
+                          )}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
+                  )
+                })()}
 
                 <div className="flex gap-2">
                   <Button onClick={handleCreateUser} className="flex-1">
@@ -5851,11 +6307,17 @@ export default function OrganizationAdminDashboard() {
                       password: '',
                       role: 'customer',
                       country_id: null,
+                      country_code: null,
                       state_id: null,
+                      state_name: null,
+                      state_code: null,
                       city_id: null,
+                      city_name: null,
                       engineer_skill_level: '',
                       engineer_specialization: []
                     })
+                    setStates([])
+                    setCities([])
                   }}>
                     Cancel
                   </Button>
@@ -5970,7 +6432,11 @@ export default function OrganizationAdminDashboard() {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <CardTitle>{editingServicePolicy ? 'Edit Service Policy' : 'Create Service Policy'}</CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setShowServicePolicyModal(false)}>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => {
+                    setShowServicePolicyModal(false)
+                    setEditingServicePolicy(null)
+                    setServicePolicyForm(getDefaultServicePolicyForm())
+                  }}>
                     <X size={20} />
                   </Button>
                 </div>
@@ -5978,7 +6444,7 @@ export default function OrganizationAdminDashboard() {
               <CardContent className="space-y-4">
                 <div>
                   <Label>Policy Type *</Label>
-                  <Select value={servicePolicyForm.policy_type} onValueChange={(val) => setServicePolicyForm({...servicePolicyForm, policy_type: val})}>
+                  <Select value={servicePolicyForm.policy_type} onValueChange={(val) => setServicePolicyForm({ ...servicePolicyForm, policy_type: val })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -5988,12 +6454,20 @@ export default function OrganizationAdminDashboard() {
                       <SelectItem value="parts">Parts</SelectItem>
                       <SelectItem value="pricing">Pricing</SelectItem>
                       <SelectItem value="replacement">Replacement</SelectItem>
+                      <SelectItem value="other">Other (custom)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Product Category (optional)</Label>
-                  <Select value={servicePolicyForm.product_category || undefined} onValueChange={(val) => setServicePolicyForm({...servicePolicyForm, product_category: val === 'all' ? '' : val})}>
+                  <Select
+                    value={(() => {
+                      const pc = servicePolicyForm.product_category || ''
+                      if (pc === '') return undefined
+                      return pc
+                    })()}
+                    onValueChange={(val) => setServicePolicyForm({ ...servicePolicyForm, product_category: val === 'all' ? '' : val })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="All products" />
                     </SelectTrigger>
@@ -6003,37 +6477,183 @@ export default function OrganizationAdminDashboard() {
                       <SelectItem value="refrigerator">Refrigerator</SelectItem>
                       <SelectItem value="washing_machine">Washing Machine</SelectItem>
                       <SelectItem value="tv">TV</SelectItem>
+                      {(() => {
+                        const pc = servicePolicyForm.product_category || ''
+                        if (pc && !SERVICE_POLICY_PRODUCT_CATEGORIES.includes(pc)) {
+                          return <SelectItem value={pc}>{pc} (custom)</SelectItem>
+                        }
+                        return null
+                      })()}
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label>Rules (JSON) *</Label>
-                  <Textarea
-                    value={servicePolicyForm._rulesRaw !== undefined ? servicePolicyForm._rulesRaw : JSON.stringify(servicePolicyForm.rules, null, 2)}
-                    onChange={(e) => {
-                      const newValue = e.target.value
-                      // Update raw value immediately so user can type
-                      setServicePolicyForm(prev => ({
-                        ...prev,
-                        _rulesRaw: newValue
-                      }))
-                      // Try to parse JSON in the background
-                      try {
-                        const parsed = JSON.parse(newValue)
-                        setServicePolicyForm(prev => ({
-                          ...prev,
-                          rules: parsed
-                        }))
-                      } catch (err) {
-                        // Invalid JSON - user is still typing, that's OK
-                        // Keep the raw value for display
-                      }
-                    }}
-                    placeholder='{"warranty_period_months": 12, "conditions": []}'
-                    rows={8}
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Enter valid JSON format. Example: {'{"warranty_period_months": 12, "conditions": []}'}</p>
+
+                <div className="border rounded-lg p-4 space-y-4 bg-gray-50/80">
+                  <Label className="text-base font-semibold">Policy rules</Label>
+                  <p className="text-xs text-gray-600">These settings are saved as structured data for billing and warranty checks—no JSON required.</p>
+
+                  {servicePolicyForm.policy_type === 'warranty' && (
+                    <div>
+                      <Label htmlFor="warranty_months">Warranty length (months)</Label>
+                      <Input
+                        id="warranty_months"
+                        type="number"
+                        min={1}
+                        max={240}
+                        value={servicePolicyForm.warranty_period_months}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          const n = parseInt(v, 10)
+                          setServicePolicyForm({
+                            ...servicePolicyForm,
+                            warranty_period_months: v === '' || !Number.isFinite(n) ? 12 : Math.min(240, Math.max(1, n)),
+                          })
+                        }}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Used with the device purchase date to decide in-warranty vs out-of-warranty.</p>
+                    </div>
+                  )}
+
+                  {servicePolicyForm.policy_type === 'chargeable' && (
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800 mb-2">Charge customer when</p>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300"
+                            checked={servicePolicyForm.charge_if_out}
+                            onChange={(e) => setServicePolicyForm({ ...servicePolicyForm, charge_if_out: e.target.checked })}
+                          />
+                          Out of warranty
+                        </label>
+                        <label className="flex items-center gap-2 text-sm mt-1">
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300"
+                            checked={servicePolicyForm.charge_if_in}
+                            onChange={(e) => setServicePolicyForm({ ...servicePolicyForm, charge_if_in: e.target.checked })}
+                          />
+                          In warranty
+                        </label>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800 mb-2">Service is free when</p>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300"
+                            checked={servicePolicyForm.free_if_in}
+                            onChange={(e) => setServicePolicyForm({ ...servicePolicyForm, free_if_in: e.target.checked })}
+                          />
+                          In warranty
+                        </label>
+                        <label className="flex items-center gap-2 text-sm mt-1">
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300"
+                            checked={servicePolicyForm.free_if_out}
+                            onChange={(e) => setServicePolicyForm({ ...servicePolicyForm, free_if_out: e.target.checked })}
+                          />
+                          Out of warranty
+                        </label>
+                      </div>
+                      <div>
+                        <Label htmlFor="visit_fee">Standard visit fee (optional)</Label>
+                        <Input
+                          id="visit_fee"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="e.g. 499"
+                          value={servicePolicyForm.visit_fee}
+                          onChange={(e) => setServicePolicyForm({ ...servicePolicyForm, visit_fee: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {servicePolicyForm.policy_type === 'parts' && (
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300"
+                          checked={servicePolicyForm.parts_oem_preferred}
+                          onChange={(e) => setServicePolicyForm({ ...servicePolicyForm, parts_oem_preferred: e.target.checked })}
+                        />
+                        Prefer OEM / original parts
+                      </label>
+                      <div>
+                        <Label htmlFor="parts_max">Maximum parts cost cap (optional)</Label>
+                        <Input
+                          id="parts_max"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="Leave blank for no cap"
+                          value={servicePolicyForm.parts_max_cost}
+                          onChange={(e) => setServicePolicyForm({ ...servicePolicyForm, parts_max_cost: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {servicePolicyForm.policy_type === 'pricing' && (
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="labor_rate">Labor rate per hour</Label>
+                        <Input
+                          id="labor_rate"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="e.g. 350"
+                          value={servicePolicyForm.labor_rate_per_hour}
+                          onChange={(e) => setServicePolicyForm({ ...servicePolicyForm, labor_rate_per_hour: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="min_charge">Minimum service charge</Label>
+                        <Input
+                          id="min_charge"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="e.g. 199"
+                          value={servicePolicyForm.minimum_service_charge}
+                          onChange={(e) => setServicePolicyForm({ ...servicePolicyForm, minimum_service_charge: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {servicePolicyForm.policy_type === 'replacement' && (
+                    <div>
+                      <Label htmlFor="repl_days">Eligible for replacement within (days from purchase)</Label>
+                      <Input
+                        id="repl_days"
+                        type="number"
+                        min={1}
+                        placeholder="e.g. 7"
+                        value={servicePolicyForm.replacement_within_days}
+                        onChange={(e) => setServicePolicyForm({ ...servicePolicyForm, replacement_within_days: e.target.value })}
+                      />
+                    </div>
+                  )}
+
+                  {servicePolicyForm.policy_type === 'other' && (
+                    <div>
+                      <Label htmlFor="svc_policy_other">Custom rules</Label>
+                      <Textarea
+                        id="svc_policy_other"
+                        className="font-mono text-sm min-h-[140px]"
+                        value={servicePolicyForm.other_policy_notes}
+                        onChange={(e) => setServicePolicyForm({ ...servicePolicyForm, other_policy_notes: e.target.value })}
+                        placeholder={'JSON object, e.g. {"notes": "..."} — or plain text (saved as notes).'}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
@@ -6043,11 +6663,15 @@ export default function OrganizationAdminDashboard() {
                   <Label>Active</Label>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleCreateServicePolicy} className="flex-1">
+                  <Button type="button" onClick={handleCreateServicePolicy} className="flex-1">
                     <Save size={16} className="mr-2" />
                     {editingServicePolicy ? 'Update Policy' : 'Create Policy'}
                   </Button>
-                  <Button variant="outline" onClick={() => setShowServicePolicyModal(false)}>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setShowServicePolicyModal(false)
+                    setEditingServicePolicy(null)
+                    setServicePolicyForm(getDefaultServicePolicyForm())
+                  }}>
                     Cancel
                   </Button>
                 </div>

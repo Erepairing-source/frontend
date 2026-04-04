@@ -11,7 +11,7 @@ import {
   ArrowLeft, Settings, Globe, CreditCard, Shield, Bell,
   Zap, Plug, Server, Save, RefreshCw, AlertCircle, CheckCircle2
 } from 'lucide-react'
-import { API_BASE } from '../../lib/api'
+import { getApiBase } from '../../lib/api'
 
 const SETTING_CATEGORIES = [
   { id: 'general', label: 'General', icon: Globe },
@@ -44,7 +44,7 @@ export default function SettingsPage() {
   const loadSettings = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(API_BASE + '/platform-admin/settings', {
+      const response = await fetch(getApiBase() + '/platform-admin/settings', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 
@@ -54,7 +54,7 @@ export default function SettingsPage() {
           const initResponse = await initializeSettings()
           if (initResponse) {
             // Retry loading after initialization
-            const retryResponse = await fetch(API_BASE + '/platform-admin/settings', {
+            const retryResponse = await fetch(getApiBase() + '/platform-admin/settings', {
               headers: { 'Authorization': `Bearer ${token}` }
             })
             if (retryResponse.ok) {
@@ -79,7 +79,7 @@ export default function SettingsPage() {
         const initSuccess = await initializeSettings()
         if (initSuccess) {
           // Reload settings after initialization
-          const retryResponse = await fetch(API_BASE + '/platform-admin/settings', {
+          const retryResponse = await fetch(getApiBase() + '/platform-admin/settings', {
             headers: { 'Authorization': `Bearer ${token}` }
           })
           if (retryResponse.ok) {
@@ -105,7 +105,7 @@ export default function SettingsPage() {
     const token = localStorage.getItem('token')
     setSaving(true)
     try {
-      const response = await fetch(API_BASE + '/platform-admin/settings/initialize', {
+      const response = await fetch(getApiBase() + '/platform-admin/settings/initialize', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -151,7 +151,7 @@ export default function SettingsPage() {
     const token = localStorage.getItem('token')
     
     try {
-      const response = await fetch(API_BASE + '/platform-admin/settings', {
+      const response = await fetch(getApiBase() + '/platform-admin/settings', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

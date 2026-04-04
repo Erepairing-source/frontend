@@ -7,7 +7,7 @@ import {
   Ticket, Package, Shield, Clock, MapPin, MessageSquare, 
   Camera, QrCode, FileText, CheckCircle2, AlertCircle, 
   TrendingUp, Bell, Settings, Search, Filter, Plus,
-  Eye, Edit, Calendar, Phone, Mail, Send, Star, Users
+  Eye, Edit, Calendar, Phone, Mail, Send, Star, Users, Timer
 } from 'lucide-react'
 import { Input } from '../../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
@@ -31,6 +31,8 @@ export default function CustomerDashboardEnhanced() {
   const [activeTab, setActiveTab] = useState('overview')
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [slaPolicies, setSlaPolicies] = useState([])
+  const [servicePolicies, setServicePolicies] = useState([])
 
   useEffect(() => {
     loadDashboardData()
@@ -41,7 +43,7 @@ export default function CustomerDashboardEnhanced() {
 
   useEffect(() => {
     const tab = router.query.tab
-    if (tab === 'notifications' || tab === 'tickets' || tab === 'devices' || tab === 'overview') {
+    if (tab === 'notifications' || tab === 'tickets' || tab === 'devices' || tab === 'overview' || tab === 'sla') {
       setActiveTab(tab)
     }
   }, [router.query.tab])
@@ -93,10 +95,63 @@ export default function CustomerDashboardEnhanced() {
         setNotifications(notifData.filter(n => !n.read_at).slice(0, 5))
       }
 
+      const slaRes = await fetch(getApiBase() + '/organizations/me/sla-policies', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (slaRes.ok) {
+        const slaData = await slaRes.json()
+        setSlaPolicies(Array.isArray(slaData) ? slaData : [])
+      } else {
+        setSlaPolicies([])
+      }
+
+      const svcRes = await fetch(getApiBase() + '/organizations/me/service-policies', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (svcRes.ok) {
+        const svcData = await svcRes.json()
+        setServicePolicies(Array.isArray(svcData) ? svcData : [])
+      } else {
+        setServicePolicies([])
+      }
+
       setLoading(false)
     } catch (error) {
       console.error('Error loading dashboard:', error)
       setLoading(false)
+    }
+  }
+
+  const slaTypeLabel = (slug) => {
+    if (!slug) return 'SLA'
+    const map = {
+      first_response: 'First response',
+      assignment: 'Engineer assignment',
+      resolution: 'Resolution',
+      on_site: 'On-site visit'
+    }
+    return map[slug] || String(slug).replace(/_/g, ' ')
+  }
+
+  const servicePolicyTypeLabel = (t) => {
+    if (!t) return 'Policy'
+    const map = {
+      warranty: 'Warranty',
+      chargeable: 'Chargeable service',
+      parts: 'Parts',
+      pricing: 'Pricing',
+      replacement: 'Replacement',
+      other: 'Other'
+    }
+    return map[String(t).toLowerCase()] || String(t).replace(/_/g, ' ')
+  }
+
+  const formatServiceRulesForCustomer = (rules) => {
+    if (!rules || typeof rules !== 'object') return null
+    try {
+      return JSON.stringify(rules, null, 2)
+    } catch {
+      return String(rules)
     }
   }
 
@@ -215,6 +270,7 @@ export default function CustomerDashboardEnhanced() {
               { id: 'overview', label: 'Overview', icon: Eye },
               { id: 'tickets', label: 'My Tickets', icon: Ticket },
               { id: 'devices', label: 'My Devices', icon: Package },
+              { id: 'sla', label: 'SLA & policies', icon: Timer },
               { id: 'notifications', label: 'Notifications', icon: Bell }
             ].map(tab => (
               <button
@@ -288,6 +344,72 @@ export default function CustomerDashboardEnhanced() {
                 )}
               </CardContent>
             </Card>
+
+            {/* SLA commitments (org-level) */}
+            {slaPolicies.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center gap-2">
+                      <Timer size={22} className="text-blue-600" />
+                      Service time commitments
+                    </CardTitle>
+                    <Button variant="outline" size="sm" onClick={() => setActiveTab('sla')}>
+                      View all
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Target response times set by your service provider for support requests.
+                  </p>
+                  <ul className="space-y-2">
+                    {slaPolicies.slice(0, 4).map((row, idx) => (
+                      <li key={idx} className="flex flex-wrap items-baseline justify-between gap-2 text-sm border-b border-gray-100 pb-2 last:border-0">
+                        <span className="font-medium text-gray-900">{slaTypeLabel(row.sla_type)}</span>
+                        <span className="text-gray-700">
+                          {row.target_hours}h target
+                          {row.business_hours_only ? ' · Business hours' : ''}
+                          {row.product_category ? ` · ${row.product_category}` : ''}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Service policies (org-level) */}
+            {servicePolicies.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield size={22} className="text-teal-600" />
+                      Service policies
+                    </CardTitle>
+                    <Button variant="outline" size="sm" onClick={() => setActiveTab('sla')}>
+                      View all
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Warranty, pricing, and other service rules published by your organization.
+                  </p>
+                  <ul className="space-y-2">
+                    {servicePolicies.slice(0, 4).map((row, idx) => (
+                      <li key={idx} className="text-sm border-b border-gray-100 pb-2 last:border-0">
+                        <span className="font-medium text-gray-900">{servicePolicyTypeLabel(row.policy_type)}</span>
+                        {row.product_category && (
+                          <Badge variant="outline" className="ml-2 text-xs">{row.product_category}</Badge>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
 
             {/* My Devices */}
             <Card>
@@ -539,6 +661,91 @@ export default function CustomerDashboardEnhanced() {
                           </div>
                         </CardContent>
                       </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'sla' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Timer size={24} className="text-blue-600" />
+                  Service times (SLA)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 mb-6">
+                  These are your organization&apos;s published target times for support. Actual times may vary by ticket priority and location.
+                </p>
+                {slaPolicies.length === 0 ? (
+                  <div className="text-center py-12 text-gray-600">
+                    <Timer size={48} className="mx-auto text-gray-300 mb-4" />
+                    <p>No SLA policies are published for your organization yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {slaPolicies.map((row, idx) => (
+                      <div
+                        key={`${row.sla_type}-${row.product_category || 'all'}-${idx}`}
+                        className="p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+                      >
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{slaTypeLabel(row.sla_type)}</h4>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Target: <span className="font-medium text-gray-800">{row.target_hours} hours</span>
+                            {row.business_hours_only ? ' · Counted in business hours only' : ''}
+                          </p>
+                          {row.product_category && (
+                            <Badge variant="outline" className="mt-2">{row.product_category}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield size={24} className="text-teal-600" />
+                  Service policies
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 mb-6">
+                  Rules your service provider uses for warranty, charges, parts, and pricing. Details are shown as published.
+                </p>
+                {servicePolicies.length === 0 ? (
+                  <div className="text-center py-12 text-gray-600">
+                    <Shield size={48} className="mx-auto text-gray-300 mb-4" />
+                    <p>No service policies are published for your organization yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {servicePolicies.map((row, idx) => (
+                      <div
+                        key={`${row.policy_type}-${row.product_category || 'all'}-${idx}`}
+                        className="p-4 border rounded-lg"
+                      >
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-gray-900">{servicePolicyTypeLabel(row.policy_type)}</h4>
+                          {row.product_category && (
+                            <Badge variant="outline">{row.product_category}</Badge>
+                          )}
+                        </div>
+                        {formatServiceRulesForCustomer(row.rules) && (
+                          <pre className="text-xs bg-slate-50 border border-slate-100 rounded-md p-3 overflow-x-auto max-h-48 text-slate-800">
+                            {formatServiceRulesForCustomer(row.rules)}
+                          </pre>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}

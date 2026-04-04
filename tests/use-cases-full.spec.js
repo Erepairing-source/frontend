@@ -6,6 +6,7 @@
 const { test, expect } = require('@playwright/test');
 
 const baseURL = process.env.PW_BASE_URL || 'http://localhost:3000';
+const apiBase = process.env.PW_API_BASE || 'http://localhost:8000/api/v1';
 
 const creds = {
   customer: {
@@ -37,6 +38,27 @@ const creds = {
     password: process.env.PW_PLATFORM_ADMIN_PASSWORD || 'Admin@123'
   }
 };
+
+/**
+ * Full suite expects hierarchy seed users (customer1@hierarchy.example.com, etc.).
+ * If missing, skip all tests in this file so CI/local runs stay green without MySQL seed.
+ * Run: cd backend && python scripts/seed_hierarchy.py
+ */
+test.beforeAll(async ({ request }) => {
+  const res = await request.post(`${apiBase}/auth/login`, {
+    headers: { 'Content-Type': 'application/json' },
+    data: JSON.stringify({
+      email: creds.customer.email,
+      password: creds.customer.password,
+    }),
+  });
+  if (!res.ok()) {
+    test.skip(
+      true,
+      `Hierarchy test users not in database (login ${res.status()}). Start backend, then run: cd backend && python scripts/seed_hierarchy.py — password: HierarchyTest1!. See START_TESTING.md.`,
+    );
+  }
+});
 
 async function login(page, email, password) {
   await page.goto(`${baseURL}/login`);

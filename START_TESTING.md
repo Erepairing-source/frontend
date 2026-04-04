@@ -48,6 +48,20 @@ npx playwright install
 
 ## 3. Run tests
 
+### User manual vs automated tests
+
+| USER_MANUAL.md area | Automated coverage |
+|---------------------|--------------------|
+| Public home, pricing, CTAs | `tests/user-manual-smoke.spec.js` (Manual 3) |
+| Organization signup wizard | Same file (Manual 4) |
+| Customer signup | Same file (Manual 5) |
+| Verify email / set-password shell | Same file (Manual 6–7) |
+| Login form + invalid credentials | Same file (Manual 8–8b) |
+| Role dashboards, tickets, hierarchy flows | `tests/use-cases-full.spec.js` — requires `python scripts/seed_hierarchy.py` |
+| Broad role matrix | `tests/role-flows.spec.js` — see credentials below |
+
+Run **`npm run test:smoke`** for the no-seed checks; run **`npm run test:use-cases`** after seeding the hierarchy users.
+
 **If the frontend runs on 3001 or 3002**, set the base URL so tests hit the right port:
 
 - Bash: `export PW_BASE_URL=http://localhost:3002`
@@ -79,6 +93,7 @@ npm run test:ui
 
 **Specific file**  
 ```bash
+npx playwright test tests/user-manual-smoke.spec.js --project=chromium
 npx playwright test tests/use-cases-full.spec.js --project=chromium
 npx playwright test tests/role-flows.spec.js --project=chromium
 npx playwright test tests/use-cases-hierarchy.spec.js --project=chromium

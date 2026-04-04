@@ -57,7 +57,7 @@ export default function StateCityDetail() {
         setCity(citiesData.find(c => c.id != null && c.id === numId) || null)
       }
 
-      const ticketsRes = await fetch(`${getApiBase()}/tickets?city_id=${cityId}`, {
+      const ticketsRes = await fetch(`${getApiBase()}/tickets/?city_id=${cityId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (ticketsRes.ok) {

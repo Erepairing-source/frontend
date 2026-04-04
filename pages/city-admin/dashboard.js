@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 
 const LocationMap = dynamic(() => import('../../components/LocationMap'), { ssr: false })
-import { API_BASE } from '../../lib/api'
+import { getApiBase } from '../../lib/api'
 
 export default function CityAdminDashboard({ user }) {
   const [dashboardData, setDashboardData] = useState(null)
@@ -113,7 +113,7 @@ export default function CityAdminDashboard({ user }) {
               dest_lat: ticket.service_latitude,
               dest_lng: ticket.service_longitude
             })
-            const response = await fetch(`${API_BASE}/routes/directions?${params.toString()}`, {
+            const response = await fetch(`${getApiBase()}/routes/directions?${params.toString()}`, {
               headers: { Authorization: `Bearer ${token}` }
             })
             const data = await response.json()
@@ -158,7 +158,7 @@ export default function CityAdminDashboard({ user }) {
   const loadDashboardData = async (token) => {
     try {
       // Load dashboard overview from database
-      const dashboardRes = await fetch(API_BASE + '/city-admin/dashboard', {
+      const dashboardRes = await fetch(getApiBase() + '/city-admin/dashboard', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (dashboardRes.ok) {
@@ -169,7 +169,7 @@ export default function CityAdminDashboard({ user }) {
 
       // Load tickets from database
       if (activeTab === 'tickets' || activeTab === 'overview') {
-        const ticketsRes = await fetch(API_BASE + '/city-admin/tickets', {
+        const ticketsRes = await fetch(getApiBase() + '/city-admin/tickets', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (ticketsRes.ok) {
@@ -180,7 +180,7 @@ export default function CityAdminDashboard({ user }) {
 
       // Load engineers from database
       if (activeTab === 'engineers' || activeTab === 'overview') {
-        const engineersRes = await fetch(API_BASE + '/city-admin/engineers', {
+        const engineersRes = await fetch(getApiBase() + '/city-admin/engineers', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (engineersRes.ok) {
@@ -191,7 +191,7 @@ export default function CityAdminDashboard({ user }) {
 
       // Load inventory from database
       if (activeTab === 'inventory' || activeTab === 'overview') {
-        const inventoryRes = await fetch(API_BASE + '/city-admin/inventory?low_stock_only=false', {
+        const inventoryRes = await fetch(getApiBase() + '/city-admin/inventory?low_stock_only=false', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (inventoryRes.ok) {
@@ -199,14 +199,14 @@ export default function CityAdminDashboard({ user }) {
           setInventory(inventoryData)
         }
 
-        const reorderRes = await fetch(API_BASE + '/city-admin/inventory/reorder-requests', {
+        const reorderRes = await fetch(getApiBase() + '/city-admin/inventory/reorder-requests', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (reorderRes.ok) {
           setReorderRequests(await reorderRes.json())
         }
 
-        const ageingRes = await fetch(API_BASE + '/city-admin/inventory?ageing_only=true&slow_moving_days=30', {
+        const ageingRes = await fetch(getApiBase() + '/city-admin/inventory?ageing_only=true&slow_moving_days=30', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (ageingRes.ok) {
@@ -216,7 +216,7 @@ export default function CityAdminDashboard({ user }) {
 
       // Load pending parts approval from database
       if (activeTab === 'parts-approval' || activeTab === 'overview') {
-        const partsRes = await fetch(API_BASE + '/city-admin/tickets/pending-parts-approval', {
+        const partsRes = await fetch(getApiBase() + '/city-admin/tickets/pending-parts-approval', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (partsRes.ok) {
@@ -226,7 +226,7 @@ export default function CityAdminDashboard({ user }) {
       }
       // Load pending start approvals (engineer accepted, waiting for city admin to approve start)
       if (activeTab === 'overview' || activeTab === 'tickets') {
-        const startRes = await fetch(API_BASE + '/city-admin/tickets/pending-start-approvals', {
+        const startRes = await fetch(getApiBase() + '/city-admin/tickets/pending-start-approvals', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (startRes.ok) {
@@ -236,7 +236,7 @@ export default function CityAdminDashboard({ user }) {
       }
 
       if (activeTab === 'complaints' || activeTab === 'overview') {
-        const complaintsRes = await fetch(API_BASE + '/city-admin/complaints', {
+        const complaintsRes = await fetch(getApiBase() + '/city-admin/complaints', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (complaintsRes.ok) {
@@ -246,14 +246,14 @@ export default function CityAdminDashboard({ user }) {
       }
 
       if (activeTab === 'overview' || activeTab === 'tickets') {
-        const suggestionsRes = await fetch(API_BASE + '/city-admin/tickets/redispatch-suggestions', {
+        const suggestionsRes = await fetch(getApiBase() + '/city-admin/tickets/redispatch-suggestions', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (suggestionsRes.ok) {
           setRedispatchSuggestions(await suggestionsRes.json())
         }
 
-        const fraudRes = await fetch(API_BASE + '/city-admin/fraud-anomalies', {
+        const fraudRes = await fetch(getApiBase() + '/city-admin/fraud-anomalies', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (fraudRes.ok) {
@@ -272,7 +272,7 @@ export default function CityAdminDashboard({ user }) {
   const handleApproveParts = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`${API_BASE}/city-admin/tickets/${selectedTicketForApproval.ticket_id}/approve-parts`, {
+      const response = await fetch(`${getApiBase()}/city-admin/tickets/${selectedTicketForApproval.ticket_id}/approve-parts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -300,7 +300,7 @@ export default function CityAdminDashboard({ user }) {
   const handleApproveStart = async (ticketId) => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(API_BASE + `/tickets/${ticketId}/approve-start`, {
+      const response = await fetch(getApiBase() + `/tickets/${ticketId}/approve-start`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -325,7 +325,7 @@ export default function CityAdminDashboard({ user }) {
     
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`${API_BASE}/city-admin/tickets/${selectedTicketForApproval.ticket_id}/reject-parts`, {
+      const response = await fetch(`${getApiBase()}/city-admin/tickets/${selectedTicketForApproval.ticket_id}/reject-parts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -354,7 +354,7 @@ export default function CityAdminDashboard({ user }) {
     if (!selectedInventoryForThreshold) return
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`${API_BASE}/city-admin/inventory/${selectedInventoryForThreshold.id}/thresholds`, {
+      const response = await fetch(`${getApiBase()}/city-admin/inventory/${selectedInventoryForThreshold.id}/thresholds`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -383,7 +383,7 @@ export default function CityAdminDashboard({ user }) {
     if (!selectedInventoryForRestock || !restockQuantity) return
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(API_BASE + '/city-admin/inventory/reorder-requests', {
+      const response = await fetch(getApiBase() + '/city-admin/inventory/reorder-requests', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -412,7 +412,7 @@ export default function CityAdminDashboard({ user }) {
   const handleApproveRestock = async (requestId) => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`${API_BASE}/city-admin/inventory/reorder-requests/${requestId}/approve`, {
+      const response = await fetch(`${getApiBase()}/city-admin/inventory/reorder-requests/${requestId}/approve`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -427,7 +427,7 @@ export default function CityAdminDashboard({ user }) {
   const handleRejectRestock = async (requestId) => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`${API_BASE}/city-admin/inventory/reorder-requests/${requestId}/reject`, {
+      const response = await fetch(`${getApiBase()}/city-admin/inventory/reorder-requests/${requestId}/reject`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -442,7 +442,7 @@ export default function CityAdminDashboard({ user }) {
   const handleAutoRestock = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(API_BASE + '/city-admin/inventory/restock/auto', {
+      const response = await fetch(getApiBase() + '/city-admin/inventory/restock/auto', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -465,7 +465,7 @@ export default function CityAdminDashboard({ user }) {
     }
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(API_BASE + '/city-admin/inventory/returns', {
+      const response = await fetch(getApiBase() + '/city-admin/inventory/returns', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -489,7 +489,7 @@ export default function CityAdminDashboard({ user }) {
   const handlePriorityUpdate = async (ticketId, priority) => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`${API_BASE}/city-admin/tickets/${ticketId}/priority`, {
+      const response = await fetch(`${getApiBase()}/city-admin/tickets/${ticketId}/priority`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -508,7 +508,7 @@ export default function CityAdminDashboard({ user }) {
   const handleFreezeAssignment = async (ticketId, frozen) => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`${API_BASE}/city-admin/tickets/${ticketId}/freeze-assignment`, {
+      const response = await fetch(`${getApiBase()}/city-admin/tickets/${ticketId}/freeze-assignment`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -543,7 +543,7 @@ export default function CityAdminDashboard({ user }) {
     
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`${API_BASE}/city-admin/tickets/${selectedTicketForReassign}/reassign`, {
+      const response = await fetch(`${getApiBase()}/city-admin/tickets/${selectedTicketForReassign}/reassign`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -575,7 +575,7 @@ export default function CityAdminDashboard({ user }) {
     }
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(API_BASE + '/city-admin/tickets/bulk-reassign', {
+      const response = await fetch(getApiBase() + '/city-admin/tickets/bulk-reassign', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -605,7 +605,7 @@ export default function CityAdminDashboard({ user }) {
     if (!selectedComplaint) return
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`${API_BASE}/city-admin/complaints/${selectedComplaint.id}/follow-up`, {
+      const response = await fetch(`${getApiBase()}/city-admin/complaints/${selectedComplaint.id}/follow-up`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -630,7 +630,7 @@ export default function CityAdminDashboard({ user }) {
   const handleQualityCheck = async () => {
     const token = localStorage.getItem('token')
     try {
-      const response = await fetch(`${API_BASE}/city-admin/tickets/${selectedTicketForQuality}/quality-check`, {
+      const response = await fetch(`${getApiBase()}/city-admin/tickets/${selectedTicketForQuality}/quality-check`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -907,7 +907,7 @@ export default function CityAdminDashboard({ user }) {
                       onClick={async () => {
                         const token = localStorage.getItem('token')
                         try {
-                          const response = await fetch(API_BASE + '/city-admin/tickets/auto-redispatch', {
+                          const response = await fetch(getApiBase() + '/city-admin/tickets/auto-redispatch', {
                             method: 'POST',
                             headers: {
                               Authorization: `Bearer ${token}`,
@@ -1106,7 +1106,7 @@ export default function CityAdminDashboard({ user }) {
                               {ticket.service_latitude && ticket.service_longitude ? (
                                 <div className="flex flex-col gap-2">
                                   <img
-                                    src={`${API_BASE}/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}&zoom=13`}
+                                    src={`${getApiBase()}/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}&zoom=13`}
                                     alt="Map thumbnail"
                                     className="h-16 w-28 rounded border object-cover"
                                   />
@@ -1151,7 +1151,7 @@ export default function CityAdminDashboard({ user }) {
                                               dest_lat: ticket.service_latitude,
                                               dest_lng: ticket.service_longitude
                                             })
-                                            const response = await fetch(`${API_BASE}/routes/directions?${params.toString()}`, {
+                                            const response = await fetch(`${getApiBase()}/routes/directions?${params.toString()}`, {
                                               headers: { Authorization: `Bearer ${token}` }
                                             })
                                             const data = await response.json()
@@ -1225,7 +1225,7 @@ export default function CityAdminDashboard({ user }) {
                                     size="sm"
                                     onClick={async () => {
                                       const token = localStorage.getItem('token')
-                                      const response = await fetch(`${API_BASE}/city-admin/tickets/${ticket.id}/quality-check`, {
+                                      const response = await fetch(`${getApiBase()}/city-admin/tickets/${ticket.id}/quality-check`, {
                                         headers: { 'Authorization': `Bearer ${token}` }
                                       })
                                       if (response.ok) {
@@ -1960,7 +1960,7 @@ export default function CityAdminDashboard({ user }) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <img
-                  src={`${API_BASE}/routes/static-map?latitude=${mapTicket.service_latitude}&longitude=${mapTicket.service_longitude}`}
+                  src={`${getApiBase()}/routes/static-map?latitude=${mapTicket.service_latitude}&longitude=${mapTicket.service_longitude}`}
                   alt="Service location"
                   className="w-full rounded-lg border"
                 />
@@ -2103,7 +2103,7 @@ export default function CityAdminDashboard({ user }) {
                     onClick={async () => {
                       const token = localStorage.getItem('token')
                       try {
-                        const response = await fetch(API_BASE + '/city-admin/city-hq', {
+                        const response = await fetch(getApiBase() + '/city-admin/city-hq', {
                           method: 'POST',
                           headers: {
                             Authorization: `Bearer ${token}`,
