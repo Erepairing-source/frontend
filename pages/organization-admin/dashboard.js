@@ -1512,6 +1512,47 @@ export default function OrganizationAdminDashboard() {
     }
   }
 
+  const handleDeleteUser = async (user) => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+      return
+    }
+    const myId = Number(localStorage.getItem('userId'))
+    if (Number(user.id) === myId) {
+      alert('You cannot delete your own account from here.')
+      return
+    }
+    if (user.role === 'organization_admin') {
+      alert('Another organization administrator cannot be deleted.')
+      return
+    }
+    const ok = window.confirm(
+      `Permanently delete user "${user.full_name}" (${user.email})? This cannot be undone.`
+    )
+    if (!ok) return
+    try {
+      const res = await fetch(`${getApiBase()}/users/${user.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = res.ok ? await res.json().catch(() => ({})) : await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const msg = typeof data.detail === 'string' ? data.detail : formatApiError(data.detail)
+        alert(msg || 'Failed to delete user')
+        return
+      }
+      setUsers((prev) => prev.filter((u) => u.id !== user.id))
+      if (activeTab === 'overview' || activeTab === 'users') {
+        loadDashboardData()
+      }
+      alert(data.message || 'User deleted')
+    } catch (e) {
+      console.error(e)
+      alert('Failed to delete user')
+    }
+  }
+
   const handleCreateServicePolicy = async () => {
     const token = localStorage.getItem('token')
     const rules = servicePolicyRulesFromForm(servicePolicyForm)
@@ -3994,7 +4035,7 @@ export default function OrganizationAdminDashboard() {
                                 </Badge>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 flex-wrap">
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -4003,6 +4044,17 @@ export default function OrganizationAdminDashboard() {
                                     <Edit size={14} className="mr-1" />
                                     Edit
                                   </Button>
+                                  {user.role !== 'organization_admin' && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-red-600 border-red-200 hover:bg-red-50"
+                                      onClick={() => handleDeleteUser(user)}
+                                    >
+                                      <Trash2 size={14} className="mr-1" />
+                                      Delete
+                                    </Button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
