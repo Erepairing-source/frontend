@@ -10,7 +10,7 @@ import {
   Ticket, Calendar, MapPin, Clock, User, MessageSquare, 
   CheckCircle2, X, ArrowLeft, AlertCircle, Phone, Mail
 } from 'lucide-react'
-import { getApiBase } from '../../../lib/api'
+import { getApiBase } from '@lib/api'
 import ComingSoon from '../../../components/ComingSoon'
 
 export default function CustomerTicketDetail() {

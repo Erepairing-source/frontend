@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card } from '../components/ui/card'
 import { User, Building2, Loader2 } from 'lucide-react'
 import Logo from '../components/Logo'
-import { getApiBase } from '../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function CustomerSignup() {
   const router = useRouter()

@@ -9,7 +9,7 @@ import { Card } from '../components/ui/card'
 import { CheckCircle2, Loader2, Building2, User, MapPin, CreditCard } from 'lucide-react'
 import Link from 'next/link'
 import Logo from '../components/Logo'
-import { getApiBase } from '../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function Signup({ user, setUser }) {
   const router = useRouter()

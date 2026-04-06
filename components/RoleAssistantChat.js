@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { getApiBase } from '../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function RoleAssistantChat({ role, page, title = 'AI Role Assistant' }) {
   const [sessionId, setSessionId] = useState('')

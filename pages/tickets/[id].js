@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/router'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 
 /**
  * Central ticket URL /tickets/[id] - redirects to the correct role-based ticket page.

@@ -6,7 +6,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import { ArrowLeft, Users, Plus, X, Edit, Eye, Search, Store } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function UsersPage() {
   const router = useRouter()

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 
 const LocationMap = dynamic(() => import('../../components/LocationMap'), { ssr: false })
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 import { ChartCard } from '../../components/analytics'
 import {
   ResponsiveContainer,

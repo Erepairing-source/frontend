@@ -4,7 +4,7 @@ import Card from '../../components/Card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { ArrowLeft, Building2, Eye, Search, DollarSign, Calendar, CheckCircle, XCircle } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function VendorOrganizations() {
   const router = useRouter()

@@ -8,7 +8,7 @@ import {
   Building2, Calendar, Phone, Mail, ArrowLeft,
   TrendingUp, Ticket, Package, CheckCircle2, XCircle
 } from 'lucide-react'
-import { getApiBase } from '../../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function VendorDetailPage() {
   const router = useRouter()

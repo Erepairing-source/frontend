@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Card } from '../components/ui/card'
 import Logo from '../components/Logo'
-import { getApiBase } from '../lib/api'
+import { getApiBase } from '@lib/api'
 import { Lock, CheckCircle2, Loader2, Mail } from 'lucide-react'
 
 function formatErrorDetail(detail) {

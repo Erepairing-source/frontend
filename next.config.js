@@ -1,3 +1,5 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -6,11 +8,12 @@ const nextConfig = {
   },
   transpilePackages: ['lucide-react'],
   webpack: (config, { isServer }) => {
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@lib': path.join(__dirname, 'lib'),
+    }
     // Fix for lucide-react barrel exports in Next.js
     if (!isServer) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-      }
       // Ensure proper handling of ESM modules
       config.resolve.extensionAlias = {
         '.js': ['.js', '.ts', '.tsx'],

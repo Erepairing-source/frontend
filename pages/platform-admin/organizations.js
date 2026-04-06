@@ -4,7 +4,7 @@ import Card from '../../components/Card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Mail, Calendar, Search, Building2, Eye, ArrowLeft } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function OrganizationsPage() {
   const router = useRouter()

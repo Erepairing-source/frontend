@@ -9,8 +9,8 @@ import {
   Clock, CheckCircle2, XCircle, Activity, Zap, DollarSign, MessageSquare
 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
-import { getApiBase } from '../../lib/api'
-import { downloadCsv, downloadJson } from '../../lib/export'
+import { getApiBase } from '@lib/api'
+import { downloadCsv, downloadJson } from '@lib/export'
 import { ChartCard } from '../../components/analytics'
 import {
   ResponsiveContainer,

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { 
   Package, ArrowLeft, Camera, Upload, CheckCircle2, AlertCircle, FileSpreadsheet, FileText
 } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function RegisterDevice() {
   const router = useRouter()

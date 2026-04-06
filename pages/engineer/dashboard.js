@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import StatCard from '../../components/StatCard'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function EngineerDashboard({ user }) {
   const [tickets, setTickets] = useState([])

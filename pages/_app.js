@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
 import FloatingRoleAssistant from '../components/FloatingRoleAssistant'
-import { getApiBase } from '../lib/api'
-import { isPathAllowedWithoutEmailVerification, isStandalonePagePath } from '../lib/authPaths'
+import { getApiBase } from '@lib/api'
+import { isPathAllowedWithoutEmailVerification, isStandalonePagePath } from '@lib/authPaths'
 
 function clearStoredAuth() {
   localStorage.removeItem('token')

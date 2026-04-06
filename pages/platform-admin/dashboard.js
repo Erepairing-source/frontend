@@ -6,7 +6,7 @@ import {
   Building2, CreditCard, Store, BarChart3, Settings,
   Users, TrendingUp, Shield, ArrowRight
 } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 import ComingSoon from '../../components/ComingSoon'
 
 export default function PlatformAdminDashboard({ user }) {

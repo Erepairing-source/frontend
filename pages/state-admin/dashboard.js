@@ -24,8 +24,8 @@ import {
   Building2, 
   X
 } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
-import { downloadCsv, downloadJson } from '../../lib/export'
+import { getApiBase } from '@lib/api'
+import { downloadCsv, downloadJson } from '@lib/export'
 import { ChartCard } from '../../components/analytics'
 import {
   ResponsiveContainer,

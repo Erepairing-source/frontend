@@ -11,7 +11,7 @@ import {
   ArrowLeft, BarChart3, TrendingUp, Building2,
   DollarSign, Package, Ticket, Activity, Download,   Target
 } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function VendorAnalytics() {
   const router = useRouter()

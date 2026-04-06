@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import Card from '../../../components/Card'
 import { Button } from '../../../components/ui/button'
 import { ArrowLeft, Building2, Mail, Phone, MapPin, Calendar, DollarSign, CreditCard, CheckCircle, XCircle } from 'lucide-react'
-import { getApiBase } from '../../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function VendorOrganizationDetails() {
   const router = useRouter()

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import Logo from './Logo'
-import { getDashboardPathForRole } from '../lib/roleDashboard'
+import { getDashboardPathForRole } from '@lib/roleDashboard'
 
 export default function Layout({ children, user, setUser }) {
   const router = useRouter()

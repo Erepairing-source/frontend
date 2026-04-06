@@ -4,7 +4,7 @@ import Card from '../../components/Card'
 import { Button } from '../../components/ui/button'
 import StatCard from '../../components/StatCard'
 import { Store, ArrowLeft, DollarSign, Eye, TrendingUp, Building2, Ticket, Package, MapPin } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function VendorsPage() {
   const router = useRouter()

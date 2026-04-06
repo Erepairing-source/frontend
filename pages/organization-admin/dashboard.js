@@ -23,7 +23,7 @@ import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
-import { getApiBase, formatApiError } from '../../lib/api'
+import { getApiBase, formatApiError } from '@lib/api'
 
 /** Product.specifications keys managed by dedicated form fields / additional_notes. */
 const RESERVED_PRODUCT_SPEC_KEYS = new Set(['manufacturing_year', 'batch_number', 'additional_notes'])

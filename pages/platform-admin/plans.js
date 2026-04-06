@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/button'
 import StatCard from '../../components/StatCard'
 import PlanModal from '../../components/PlanModal'
 import { ArrowLeft, Plus } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function PlansPage() {
   const router = useRouter()

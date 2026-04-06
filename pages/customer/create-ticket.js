@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 import ComingSoon from '../../components/ComingSoon'
 import PreferredVisitSlotPicker from '../../components/customer/PreferredVisitSlotPicker'
 

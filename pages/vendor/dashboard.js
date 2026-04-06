@@ -8,7 +8,7 @@ import {
   Building2, TrendingUp, DollarSign, Users, Ticket, Package,
   ArrowRight, Eye, Calendar, CreditCard, BarChart3, Settings, Link, Copy
 } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function VendorDashboard() {
   const router = useRouter()

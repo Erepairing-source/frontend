@@ -11,7 +11,7 @@ import {
   ArrowLeft, Settings, Globe, CreditCard, Shield, Bell,
   Zap, Plug, Server, Save, RefreshCw, AlertCircle, CheckCircle2
 } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 
 const SETTING_CATEGORIES = [
   { id: 'general', label: 'General', icon: Globe },

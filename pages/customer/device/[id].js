@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { ArrowLeft, Package, Shield, FileText, Camera } from 'lucide-react'
-import { getApiBase } from '../../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function CustomerDeviceDetail() {
   const router = useRouter()

@@ -9,7 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line
 } from 'recharts'
-import { getApiBase } from '../../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function CountryAdminPartnerDetail() {
   const router = useRouter()

@@ -2,7 +2,7 @@ import { Button } from "./ui/button"
 import { Switch } from "./ui/switch"
 import { Check, Zap, Crown, Building, Users, FileText, Headphones, Star, Shield, Clock, BarChart3, Settings, Globe, Sparkles, Package, X } from "lucide-react"
 import { useState, useEffect } from "react"
-import { getApiBase } from "../lib/api"
+import { getApiBase } from '@lib/api'
 
 export default function Pricing() {
   const [plans, setPlans] = useState([])

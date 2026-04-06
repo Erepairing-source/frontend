@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
-import { getApiBase } from '../../../lib/api'
+import { getApiBase } from '@lib/api'
 import ComingSoon from '../../../components/ComingSoon'
 import PreferredVisitSlots from '../../../components/engineer/PreferredVisitSlots'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'

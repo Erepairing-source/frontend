@@ -13,7 +13,7 @@ import {
   Ticket, Package, Store, DollarSign, CreditCard, Activity,
   Download, Calendar, TrendingDown,   Target
 } from 'lucide-react'
-import { getApiBase } from '../../lib/api'
+import { getApiBase } from '@lib/api'
 import ComingSoon from '../../components/ComingSoon'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']

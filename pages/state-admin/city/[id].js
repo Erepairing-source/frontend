@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ArrowLeft, Ticket, Users, Package, AlertCircle, MapPin } from 'lucide-react'
 
 const LocationMap = dynamic(() => import('../../../components/LocationMap'), { ssr: false })
-import { getApiBase } from '../../../lib/api'
+import { getApiBase } from '@lib/api'
 
 export default function StateCityDetail() {
   const router = useRouter()
