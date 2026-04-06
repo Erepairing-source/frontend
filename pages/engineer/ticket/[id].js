@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { getApiBase } from '../../../lib/api'
 import ComingSoon from '../../../components/ComingSoon'
+import PreferredVisitSlots from '../../../components/engineer/PreferredVisitSlots'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
 
 export default function EngineerTicketDetail({ user }) {
   const router = useRouter()
@@ -46,6 +50,11 @@ export default function EngineerTicketDetail({ user }) {
   const [startOtpLoading, setStartOtpLoading] = useState(false)
   const [completionOtpInput, setCompletionOtpInput] = useState('')
   const [completionOtpLoading, setCompletionOtpLoading] = useState(false)
+  const [otpEscalateOpen, setOtpEscalateOpen] = useState(false)
+  const [otpEscalateReason, setOtpEscalateReason] = useState(
+    'Customer did not provide the completion OTP after it was requested. Please review and close the ticket if appropriate.'
+  )
+  const [otpEscalateLoading, setOtpEscalateLoading] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -527,12 +536,51 @@ export default function EngineerTicketDetail({ user }) {
       })
       if (response.ok) {
         alert('Escalation submitted')
+        const refreshed = await fetch(`${getApiBase()}/tickets/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+        if (refreshed.ok) setTicket(await refreshed.json())
       } else {
         const error = await response.json()
         alert(error.detail || 'Error escalating')
       }
     } catch (err) {
       alert('Error escalating')
+    }
+  }
+
+  const submitOtpEscalationToCityAdmin = async () => {
+    if (!otpEscalateReason.trim()) {
+      alert('Please describe why the OTP cannot be obtained.')
+      return
+    }
+    const token = localStorage.getItem('token')
+    setOtpEscalateLoading(true)
+    try {
+      const response = await fetch(`${getApiBase()}/tickets/${id}/escalate`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          escalation_type: 'other',
+          escalation_level: 'city',
+          reason: otpEscalateReason.trim(),
+          extra_data: { subtype: 'completion_otp_not_provided' }
+        })
+      })
+      const data = await response.json().catch(() => ({}))
+      if (response.ok) {
+        setOtpEscalateOpen(false)
+        alert(data.message || 'Escalated to City Admin. They can close the ticket without OTP.')
+        const refreshed = await fetch(`${getApiBase()}/tickets/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+        if (refreshed.ok) setTicket(await refreshed.json())
+      } else {
+        alert(data.detail || 'Could not escalate')
+      }
+    } catch (e) {
+      alert('Could not escalate')
+    } finally {
+      setOtpEscalateLoading(false)
     }
   }
 
@@ -586,35 +634,81 @@ export default function EngineerTicketDetail({ user }) {
 
   const isAdminViewOnly = user && ['city_admin', 'state_admin', 'country_admin', 'organization_admin', 'platform_admin'].includes(user.role) && (ticket.assigned_engineer_id == null || Number(user.id) !== Number(ticket.assigned_engineer_id))
 
+  const statusVariant = (s) => {
+    const v = (s || '').toLowerCase()
+    if (v === 'resolved' || v === 'closed') return 'bg-emerald-100 text-emerald-800 border-emerald-200'
+    if (v === 'escalated') return 'bg-amber-100 text-amber-900 border-amber-200'
+    if (v === 'in_progress') return 'bg-blue-100 text-blue-800 border-blue-200'
+    return 'bg-slate-100 text-slate-800 border-slate-200'
+  }
+  const priorityVariant = (p) => {
+    const v = (p || '').toLowerCase()
+    if (v === 'urgent') return 'bg-red-100 text-red-800 border-red-200'
+    if (v === 'high') return 'bg-orange-100 text-orange-900 border-orange-200'
+    return 'bg-slate-100 text-slate-700 border-slate-200'
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/30 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <button
-            onClick={() => router.back()}
-            className="text-blue-600 hover:underline mb-4"
-          >
+        <div className="mb-8">
+          <Button variant="ghost" className="mb-4 -ml-2 text-blue-700 font-medium" onClick={() => router.push('/engineer/dashboard')}>
             ← Back to Dashboard
-          </button>
-          <h1 className="text-3xl font-bold">Ticket: {ticket.ticket_number}</h1>
+          </Button>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Service ticket</p>
+              <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">{ticket.ticket_number}</h1>
+              {ticket.issue_category && (
+                <p className="mt-1 text-slate-600">Category: <span className="font-medium text-slate-800">{ticket.issue_category}</span></p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className={`border px-3 py-1 text-sm font-semibold ${statusVariant(ticket.status)}`}>
+                {(ticket.status || '').replace(/_/g, ' ')}
+              </Badge>
+              <Badge variant="outline" className={`border px-3 py-1 text-sm font-semibold ${priorityVariant(ticket.priority)}`}>
+                {(ticket.priority || 'medium').toString()} priority
+              </Badge>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 rounded-xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-sm">
+            {ticket.sla_deadline && (
+              <span>
+                <span className="font-semibold text-slate-800">SLA target </span>
+                {new Date(ticket.sla_deadline).toLocaleString(undefined, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short'
+                })}
+              </span>
+            )}
+            {ticket.device && (
+              <span>
+                <span className="font-semibold text-slate-800">Device </span>
+                {[ticket.device.brand, ticket.device.model_number].filter(Boolean).join(' ')}
+                {ticket.device.serial_number ? ` · SN ${ticket.device.serial_number}` : ''}
+              </span>
+            )}
+            {ticket.warranty_status && (
+              <span>
+                <span className="font-semibold text-slate-800">Warranty </span>
+                {String(ticket.warranty_status).replace(/_/g, ' ')}
+                {ticket.is_chargeable != null ? (ticket.is_chargeable ? ' · chargeable' : ' · not chargeable') : ''}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Ticket Info */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Issue Details</h2>
-              <p className="text-gray-700 mb-4">{ticket.issue_description}</p>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-600">Status:</span>
-                  <span className="ml-2 font-semibold">{ticket.status}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Priority:</span>
-                  <span className="ml-2 font-semibold">{ticket.priority}</span>
-                </div>
-              </div>
+            <Card className="border-slate-200/80 shadow-md overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 pb-4">
+                <CardTitle className="text-xl text-slate-900">Issue details</CardTitle>
+                <p className="text-sm text-slate-500 font-normal">What the customer reported and where service is needed</p>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+              <p className="text-slate-800 leading-relaxed whitespace-pre-wrap">{ticket.issue_description}</p>
               {(ticket.parent_ticket || (ticket.follow_up_tickets && ticket.follow_up_tickets.length > 0)) && (
                 <div className="mt-4 text-sm text-gray-700">
                   {ticket.parent_ticket && (
@@ -674,7 +768,18 @@ export default function EngineerTicketDetail({ user }) {
                   </ul>
                 </div>
               )}
-            </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200/80 shadow-md">
+              <CardHeader className="pb-2 border-b border-slate-100 bg-gradient-to-r from-teal-50/50 to-transparent">
+                <CardTitle className="text-lg text-slate-900">Customer preferred visit slots</CardTitle>
+                <p className="text-sm text-slate-500 font-normal">When the customer prefers the engineer to visit</p>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <PreferredVisitSlots slots={ticket.preferred_time_slots} variant="embedded" />
+              </CardContent>
+            </Card>
 
             {(aiSummary || aiChecklist || aiParts || aiSlaRisk) && (
               <div className="bg-white rounded-lg shadow p-6 space-y-4">
@@ -1068,24 +1173,29 @@ export default function EngineerTicketDetail({ user }) {
                   </ul>
                 )}
               </div>
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-2">
-                <p className="font-medium text-blue-900 text-sm">Completion OTP (sent to customer email)</p>
-                <div className="flex gap-2 flex-wrap items-center">
-                  <button
+              <div className="rounded-xl border border-blue-200/80 bg-gradient-to-br from-blue-50 to-indigo-50/40 p-4 space-y-3 shadow-sm">
+                <p className="font-semibold text-blue-950 text-sm">Completion OTP (sent to customer email)</p>
+                <p className="text-xs text-blue-900/80">Ask the customer for the code after you tap Request. If they cannot provide it, escalate to City Admin — they can close the ticket without OTP.</p>
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center flex-wrap">
+                  <Button
+                    type="button"
                     onClick={requestCompletionOtp}
                     disabled={completionOtpLoading}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
                   >
                     {completionOtpLoading ? 'Sending...' : 'Request completion OTP'}
-                  </button>
+                  </Button>
                   <input
                     type="text"
+                    inputMode="numeric"
                     value={completionOtpInput}
                     onChange={(e) => setCompletionOtpInput(e.target.value)}
-                    placeholder="Enter OTP from customer"
-                    className="px-3 py-2 border border-gray-300 rounded-lg w-32"
+                    placeholder="Enter 6-digit OTP"
+                    className="px-3 py-2 border border-blue-200 rounded-lg w-36 bg-white text-slate-900"
                     maxLength={6}
                   />
+                  <Button type="button" variant="outline" className="border-amber-300 text-amber-900 hover:bg-amber-50" onClick={() => setOtpEscalateOpen(true)}>
+                    No OTP from customer — escalate to City Admin
+                  </Button>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -1172,6 +1282,43 @@ export default function EngineerTicketDetail({ user }) {
           </div>
         </div>
       </div>
+
+      {otpEscalateOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="otp-escalate-title"
+        >
+          <Card className="w-full max-w-lg shadow-2xl border-slate-200">
+            <CardHeader>
+              <CardTitle id="otp-escalate-title">Escalate to City Admin (no completion OTP)</CardTitle>
+              <p className="text-sm text-slate-500 font-normal pt-1">
+                City Admin can review and close the ticket without customer OTP when justified.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Reason</label>
+                <textarea
+                  rows={4}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={otpEscalateReason}
+                  onChange={(e) => setOtpEscalateReason(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setOtpEscalateOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={submitOtpEscalationToCityAdmin} disabled={otpEscalateLoading}>
+                  {otpEscalateLoading ? 'Sending…' : 'Submit escalation'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

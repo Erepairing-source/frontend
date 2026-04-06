@@ -4316,7 +4316,7 @@ export default function OrganizationAdminDashboard() {
                   </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Ticket Trends Chart */}
                   <Card>
                     <CardHeader>
@@ -4399,6 +4399,35 @@ export default function OrganizationAdminDashboard() {
                         <div className="text-center py-12 text-gray-500">
                           <Activity size={48} className="mx-auto text-gray-400 mb-4" />
                           <p className="text-sm">No status data available</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Gauge size={20} />
+                        Ticket priority mix
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {analytics.priority_distribution && Object.keys(analytics.priority_distribution).length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={Object.entries(analytics.priority_distribution).map(([name, value]) => ({
+                            name: name.charAt(0).toUpperCase() + name.slice(1),
+                            value
+                          }))}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <Tooltip />
+                            <Bar dataKey="value" fill="#f59e0b" name="Count" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="text-center py-12 text-gray-500">
+                          <p className="text-sm">No priority data for this period</p>
                         </div>
                       )}
                     </CardContent>

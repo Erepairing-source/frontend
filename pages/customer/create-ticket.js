@@ -4,15 +4,32 @@ import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { getApiBase } from '../../lib/api'
 import ComingSoon from '../../components/ComingSoon'
+import PreferredVisitSlotPicker from '../../components/customer/PreferredVisitSlotPicker'
+
+function FormSection({ eyebrow, title, subtitle, children, className = '' }) {
+  return (
+    <div className={`rounded-2xl border border-slate-200/80 bg-white shadow-md shadow-slate-200/40 overflow-hidden ${className}`}>
+      <div className="px-5 sm:px-7 py-4 sm:py-5 bg-gradient-to-r from-slate-50 via-white to-teal-50/30 border-b border-slate-100">
+        {eyebrow && (
+          <p className="text-xs font-semibold uppercase tracking-wider text-teal-700/90 mb-1">{eyebrow}</p>
+        )}
+        <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">{title}</h2>
+        {subtitle && <p className="text-sm text-slate-600 mt-1 max-w-2xl">{subtitle}</p>}
+      </div>
+      <div className="p-5 sm:p-7 space-y-4">{children}</div>
+    </div>
+  )
+}
 
 export default function CreateTicket() {
   const [formData, setFormData] = useState({
     issue_description: '',
-    device_serial: '',
     service_address: '',
     priority: 'medium',
     issue_language: 'en'
   })
+  const [devices, setDevices] = useState([])
+  const [deviceId, setDeviceId] = useState('')
   const [serviceLocation, setServiceLocation] = useState({ lat: '', lng: '' })
   const [geoLoading, setGeoLoading] = useState(false)
   const [lastGeocodedAddress, setLastGeocodedAddress] = useState('')
@@ -34,31 +51,30 @@ export default function CreateTicket() {
   const { device_id } = router.query
 
   useEffect(() => {
-    if (!device_id) return
     const token = localStorage.getItem('token')
     if (!token) return
-    fetch(`${getApiBase()}/devices/${device_id}`, {
+    fetch(`${getApiBase()}/devices/`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data?.serial_number) {
-          setFormData(prev => ({ ...prev, device_serial: data.serial_number }))
-        }
-      })
-      .catch(() => null)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((list) => setDevices(Array.isArray(list) ? list : []))
+      .catch(() => setDevices([]))
+  }, [])
+
+  useEffect(() => {
+    if (device_id) setDeviceId(String(device_id))
   }, [device_id])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) return
-    fetch((getApiBase()) + '/ai/self-diagnosis/questions', {
+    fetch(getApiBase() + '/ai/self-diagnosis/questions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     })
-      .then(res => res.json())
-      .then(data => setSelfQuestions(data.questions || []))
+      .then((res) => res.json())
+      .then((data) => setSelfQuestions(data.questions || []))
       .catch(() => null)
   }, [])
 
@@ -90,20 +106,24 @@ export default function CreateTicket() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!deviceId) {
+      alert('Please select a registered device.')
+      return
+    }
     setLoading(true)
 
     const token = localStorage.getItem('token')
 
     try {
-      const response = await fetch((getApiBase()) + '/tickets/', {
+      const response = await fetch(getApiBase() + '/tickets/', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           issue_description: formData.issue_description,
-          device_serial: formData.device_serial,
+          device_id: parseInt(deviceId, 10),
           service_address: formData.service_address,
           priority: formData.priority,
           issue_language: formData.issue_language,
@@ -112,7 +132,7 @@ export default function CreateTicket() {
           service_longitude: serviceLocation.lng || null,
           contact_preferences: Object.keys(contactPreferences).filter((key) => contactPreferences[key]),
           preferred_time_slots: preferredTimeSlots
-        }),
+        })
       })
 
       const data = await response.json()
@@ -142,23 +162,22 @@ export default function CreateTicket() {
     }
 
     try {
-      const response = await fetch((getApiBase()) + '/ai/triage', {
+      const response = await fetch(getApiBase() + '/ai/triage', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           issue_description: formData.issue_description,
-          device_category: null, // Could be enhanced to get from device selection
+          device_category: null,
           device_model: null,
           issue_photos: issueAttachments
-        }),
+        })
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }))
-        console.error('AI Triage error:', errorData)
         alert('Error getting AI suggestions: ' + (errorData.detail || 'Unknown error'))
         return
       }
@@ -169,7 +188,6 @@ export default function CreateTicket() {
         setFormData({ ...formData, priority: data.suggested_priority })
       }
     } catch (err) {
-      console.error('AI Triage error:', err)
       alert('Network error. Please check your connection and try again.')
     }
   }
@@ -182,10 +200,10 @@ export default function CreateTicket() {
     }
     setSelfLoading(true)
     try {
-      const response = await fetch((getApiBase()) + '/ai/self-diagnosis/assess', {
+      const response = await fetch(getApiBase() + '/ai/self-diagnosis/assess', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -207,87 +225,124 @@ export default function CreateTicket() {
     }
   }
 
+  const selectedDev = devices.find((d) => String(d.id) === deviceId)
+  const selectedDeviceLabel = selectedDev
+    ? [selectedDev.brand, selectedDev.model_number, selectedDev.serial_number].filter(Boolean).join(' · ')
+    : ''
+
   return (
-    <div>
-      <div className="mb-8">
-        <button
-          onClick={() => router.back()}
-          className="text-blue-600 hover:text-blue-700 mb-4 flex items-center gap-2"
-        >
-          ← Back
-        </button>
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Create Service Ticket</h1>
-        <p className="text-gray-600">Describe your issue and we&apos;ll help you get it resolved</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-indigo-50/40">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="mb-10 text-center sm:text-left">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="text-teal-700 hover:text-teal-900 font-medium mb-4 inline-flex items-center gap-1"
+          >
+            ← Back
+          </button>
+          <div className="inline-block sm:block rounded-2xl bg-white/70 backdrop-blur border border-white/60 shadow-lg shadow-teal-900/5 px-6 py-5 sm:px-8 sm:py-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-teal-800/80 mb-2">New service request</p>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              Create a service ticket
+            </h1>
+            <p className="mt-2 text-slate-600 max-w-2xl">
+              Tell us what&apos;s wrong, where to visit, and when you&apos;re available — we&apos;ll route your request to the right team.
+            </p>
+          </div>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card className="p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Device Serial Number
-                </label>
-                <input
-                  type="text"
-                  value={formData.device_serial}
-                  onChange={(e) => setFormData({ ...formData, device_serial: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  placeholder="Enter device serial number"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Issue Description *
-                </label>
-                <textarea
-                  value={formData.issue_description}
-                  onChange={(e) => setFormData({ ...formData, issue_description: e.target.value })}
-                  onBlur={getAITriage}
-                  required
-                  rows={6}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  placeholder="Describe the issue in detail..."
-                />
-                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={getAITriage}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
+          <div className="lg:col-span-2 space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <FormSection
+                eyebrow="Step 1"
+                title="Device"
+                subtitle="Choose the product that needs service. Only devices registered to your account appear here."
+              >
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Registered device *</label>
+                  <select
+                    value={deviceId}
+                    onChange={(e) => setDeviceId(e.target.value)}
+                    required
+                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white text-slate-900 shadow-inner focus:ring-2 focus:ring-teal-500/40 focus:border-teal-400 transition"
                   >
-                    🤖 Get AI Suggestions
-                  </button>
-                  <ComingSoon variant="badge" message="Coming Soon" />
+                    <option value="">Select a device</option>
+                    {devices.map((d) => (
+                      <option key={d.id} value={String(d.id)}>
+                        {[d.brand, d.model_number, d.serial_number].filter(Boolean).join(' · ') || `Device #${d.id}`}
+                      </option>
+                    ))}
+                  </select>
+                  {devices.length === 0 && (
+                    <p className="mt-3 text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                      No devices found. Register a device first, then return here to create a ticket.
+                    </p>
+                  )}
+                  {deviceId && selectedDeviceLabel && (
+                    <p className="mt-2 text-sm text-slate-600">
+                      Selected: <span className="font-medium text-slate-800">{selectedDeviceLabel}</span>
+                    </p>
+                  )}
                 </div>
-                {aiTriage?.summary && (
-                  <div className="mt-2 text-sm text-gray-700">
-                    <div className="font-semibold">AI Summary</div>
-                    <div>{aiTriage.summary}</div>
-                    {aiTriage.key_symptoms?.length > 0 && (
-                      <div className="mt-1 text-xs text-gray-600">
-                        Symptoms: {aiTriage.key_symptoms.join(', ')}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              </FormSection>
 
-              {selfQuestions.length > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-900 mb-2">Smart Self-Diagnosis</h3>
-                  <div className="space-y-3">
+              <FormSection
+                eyebrow="Step 2"
+                title="Describe the issue"
+                subtitle="Clear details help us assign the right engineer and parts."
+              >
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">What&apos;s happening? *</label>
+                  <textarea
+                    value={formData.issue_description}
+                    onChange={(e) => setFormData({ ...formData, issue_description: e.target.value })}
+                    onBlur={getAITriage}
+                    required
+                    rows={6}
+                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500/40 focus:border-teal-400 transition resize-y min-h-[140px]"
+                    placeholder="Example: Washing machine stops mid-cycle with an error code, water not draining…"
+                  />
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={getAITriage}
+                      className="text-sm font-semibold text-teal-700 hover:text-teal-900"
+                    >
+                      Get AI suggestions
+                    </button>
+                    <ComingSoon variant="badge" message="Coming Soon" />
+                  </div>
+                  {aiTriage?.summary && (
+                    <div className="mt-4 rounded-xl border border-teal-100 bg-teal-50/50 px-4 py-3 text-sm text-slate-800">
+                      <div className="font-semibold text-teal-900 mb-1">AI summary</div>
+                      <div>{aiTriage.summary}</div>
+                      {aiTriage.key_symptoms?.length > 0 && (
+                        <div className="mt-2 text-xs text-slate-600">
+                          Symptoms: {aiTriage.key_symptoms.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {selfQuestions.length > 0 && (
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
+                    <h3 className="font-semibold text-indigo-950">Quick self-check (optional)</h3>
                     {selfQuestions.map((q) => (
                       <div key={q.id}>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">{q.question}</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{q.question}</label>
                         <select
                           value={selfAnswers[q.id] || ''}
                           onChange={(e) => setSelfAnswers({ ...selfAnswers, [q.id]: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white"
                         >
                           <option value="">Select</option>
                           {q.options.map((opt) => (
-                            <option key={opt} value={opt}>{opt}</option>
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -295,99 +350,103 @@ export default function CreateTicket() {
                     <button
                       type="button"
                       onClick={runSelfDiagnosis}
-                      className="text-sm text-blue-700 font-medium"
+                      className="text-sm font-semibold text-indigo-800 hover:text-indigo-950"
                     >
-                      {selfLoading ? 'Checking...' : 'Run Self-Diagnosis'}
+                      {selfLoading ? 'Checking…' : 'Run self-check'}
                     </button>
                     {selfResult?.assessment && (
-                      <div className="text-sm text-gray-700">
-                        <div>Likely issue: <strong>{selfResult.assessment.likely_issue}</strong></div>
+                      <div className="text-sm text-slate-700 pt-2 border-t border-indigo-100">
+                        <div>
+                          Likely issue: <strong>{selfResult.assessment.likely_issue}</strong>
+                        </div>
                         <div>Confidence: {Math.round(selfResult.assessment.confidence * 100)}%</div>
-                        <div>Likely fix: {selfResult.assessment.likely_fix}</div>
-                        {selfResult.triage?.suggested_parts?.length > 0 && (
-                          <div className="mt-1 text-xs text-gray-600">
-                            Suggested parts: {selfResult.triage.suggested_parts.map(p => p.part_name || p.part_id).join(', ')}
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Preferred Language
-                </label>
-                <select
-                  value={formData.issue_language}
-                  onChange={(e) => setFormData({ ...formData, issue_language: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                >
-                  <option value="en">English</option>
-                  <option value="hi">Hindi</option>
-                  <option value="mr">Marathi</option>
-                  <option value="ta">Tamil</option>
-                  <option value="te">Telugu</option>
-                  <option value="bn">Bengali</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Photos or Short Videos (URLs)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={attachmentInput}
-                    onChange={(e) => setAttachmentInput(e.target.value)}
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                    placeholder="Paste image/video URL and click Add"
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      if (!attachmentInput.trim()) return
-                      setIssueAttachments([...issueAttachments, attachmentInput.trim()])
-                      setAttachmentInput('')
-                    }}
-                    size="lg"
-                  >
-                    Add
-                  </Button>
-                </div>
-                {issueAttachments.length > 0 && (
-                  <ul className="mt-3 space-y-2 text-sm text-gray-600">
-                    {issueAttachments.map((url, idx) => (
-                      <li key={`${url}-${idx}`} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <span className="truncate">{url}</span>
-                        <button
-                          type="button"
-                          onClick={() => setIssueAttachments(issueAttachments.filter((_, i) => i !== idx))}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          Remove
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
                 )}
-              </div>
+              </FormSection>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Service Address *
-                </label>
-                <textarea
-                  value={formData.service_address}
-                  onChange={(e) => setFormData({ ...formData, service_address: e.target.value })}
-                  required
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  placeholder="Enter complete service address"
-                />
-                <div className="mt-2 flex gap-2">
+              <FormSection
+                eyebrow="Step 3"
+                title="Language & evidence"
+                subtitle="Optional links to photos or short videos help diagnose faster."
+              >
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Preferred language</label>
+                  <select
+                    value={formData.issue_language}
+                    onChange={(e) => setFormData({ ...formData, issue_language: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-teal-500/40"
+                  >
+                    <option value="en">English</option>
+                    <option value="hi">Hindi</option>
+                    <option value="mr">Marathi</option>
+                    <option value="ta">Tamil</option>
+                    <option value="te">Telugu</option>
+                    <option value="bn">Bengali</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Photo / video URLs</label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="url"
+                      value={attachmentInput}
+                      onChange={(e) => setAttachmentInput(e.target.value)}
+                      className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500/40"
+                      placeholder="https://…"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!attachmentInput.trim()) return
+                        setIssueAttachments([...issueAttachments, attachmentInput.trim()])
+                        setAttachmentInput('')
+                      }}
+                      size="lg"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  {issueAttachments.length > 0 && (
+                    <ul className="mt-3 space-y-2">
+                      {issueAttachments.map((url, idx) => (
+                        <li
+                          key={`${url}-${idx}`}
+                          className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-sm"
+                        >
+                          <span className="truncate text-slate-700">{url}</span>
+                          <button
+                            type="button"
+                            onClick={() => setIssueAttachments(issueAttachments.filter((_, i) => i !== idx))}
+                            className="text-red-600 hover:text-red-800 font-medium shrink-0"
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </FormSection>
+
+              <FormSection
+                eyebrow="Step 4"
+                title="Service location"
+                subtitle="Full address where the engineer should visit. You can pin from the address or use GPS."
+              >
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Address *</label>
+                  <textarea
+                    value={formData.service_address}
+                    onChange={(e) => setFormData({ ...formData, service_address: e.target.value })}
+                    required
+                    rows={4}
+                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500/40"
+                    placeholder="House / flat, street, landmark, city, PIN…"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     variant="outline"
@@ -414,125 +473,126 @@ export default function CreateTicket() {
                     }}
                     disabled={geoLoading}
                   >
-                    {geoLoading ? 'Locating...' : 'Lookup Location'}
+                    {geoLoading ? 'Locating…' : 'Pin from address'}
                   </Button>
-                  {serviceLocation.lat && serviceLocation.lng && (
-                    <span className="text-xs text-gray-500 self-center">
-                      {serviceLocation.lat}, {serviceLocation.lng}
-                    </span>
-                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+                        alert('Location is not available in this browser.')
+                        return
+                      }
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          setServiceLocation({
+                            lat: String(pos.coords.latitude),
+                            lng: String(pos.coords.longitude)
+                          })
+                        },
+                        () => alert('Could not read your location. Allow access or use address pin.'),
+                        { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
+                      )
+                    }}
+                  >
+                    Use my location (GPS)
+                  </Button>
                 </div>
-              </div>
+                {serviceLocation.lat && serviceLocation.lng && (
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-sm text-emerald-900">
+                    <span className="font-medium">Coordinates saved:</span>{' '}
+                    {serviceLocation.lat}, {serviceLocation.lng}
+                  </div>
+                )}
+                <p className="text-xs text-slate-500">
+                  Address lookup uses OpenStreetMap when paid map keys are not configured. GPS uses your device only.
+                </p>
+              </FormSection>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Preferred Visit Slots
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
-                  {[
-                    { day: 'Mon', slots: ['9-12', '12-4', '4-8'] },
-                    { day: 'Tue', slots: ['9-12', '12-4', '4-8'] },
-                    { day: 'Wed', slots: ['9-12', '12-4', '4-8'] },
-                    { day: 'Thu', slots: ['9-12', '12-4', '4-8'] },
-                    { day: 'Fri', slots: ['9-12', '12-4', '4-8'] },
-                    { day: 'Sat', slots: ['9-12', '12-4', '4-8'] },
-                    { day: 'Sun', slots: ['9-12', '12-4', '4-8'] }
-                  ].map(({ day, slots }) => (
-                    <div key={day} className="border rounded-lg p-3">
-                      <div className="font-semibold mb-2">{day}</div>
-                      <div className="space-y-1">
-                        {slots.map((slot) => {
-                          const key = `${day}-${slot}`
-                          const checked = preferredTimeSlots.some((t) => t.day === day && t.slot === slot)
-                          return (
-                            <label key={key} className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setPreferredTimeSlots([...preferredTimeSlots, { day, slot }])
-                                  } else {
-                                    setPreferredTimeSlots(preferredTimeSlots.filter((t) => !(t.day === day && t.slot === slot)))
-                                  }
-                                }}
-                              />
-                              <span>{slot}</span>
-                            </label>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ))}
+              <FormSection
+                eyebrow="Step 5"
+                title="Preferred visit times"
+                subtitle="Tap the time bands that work for you — pick as many as you need across the week."
+              >
+                <PreferredVisitSlotPicker value={preferredTimeSlots} onChange={setPreferredTimeSlots} />
+              </FormSection>
+
+              <FormSection
+                eyebrow="Step 6"
+                title="Contact & priority"
+                subtitle="How we should reach you, and how urgent this visit is."
+              >
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-3">Contact preferences</label>
+                  <div className="flex flex-wrap gap-3">
+                    {['call', 'whatsapp', 'sms'].map((pref) => (
+                      <label
+                        key={pref}
+                        className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 cursor-pointer transition ${
+                          contactPreferences[pref]
+                            ? 'border-teal-400 bg-teal-50 text-teal-950 shadow-sm'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                          checked={contactPreferences[pref]}
+                          onChange={(e) =>
+                            setContactPreferences({ ...contactPreferences, [pref]: e.target.checked })
+                          }
+                        />
+                        <span className="capitalize text-sm font-medium">{pref}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Contact Preferences
-                </label>
-                <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-                  {['call', 'whatsapp', 'sms'].map((pref) => (
-                    <label key={pref} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={contactPreferences[pref]}
-                        onChange={(e) => setContactPreferences({ ...contactPreferences, [pref]: e.target.checked })}
-                      />
-                      <span className="capitalize">{pref}</span>
-                    </label>
-                  ))}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Priority</label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    className="w-full max-w-xs px-4 py-3 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-teal-500/40"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
                 </div>
-              </div>
+              </FormSection>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Priority
-                </label>
-                <select
-                  value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1"
-                  size="lg"
-                >
-                  {loading ? 'Creating...' : 'Create Ticket'}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <Button type="submit" disabled={loading} className="flex-1 sm:flex-none sm:min-w-[200px]" size="lg">
+                  {loading ? 'Creating…' : 'Submit ticket'}
                 </Button>
-                <Button
-                  type="button"
-                  onClick={() => router.back()}
-                  variant="secondary"
-                  size="lg"
-                >
+                <Button type="button" onClick={() => router.back()} variant="secondary" size="lg">
                   Cancel
                 </Button>
               </div>
             </form>
-          </Card>
-        </div>
+          </div>
 
-        {/* AI Triage Sidebar */}
-        <div>
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">🤖</span>
-              <h3 className="font-bold text-blue-900">AI Triage Suggestions</h3>
-              <ComingSoon variant="badge" message="Coming Soon" />
-            </div>
-            <ComingSoon variant="card" message="AI Triage – Coming Soon" />
-          </Card>
+          <div className="lg:col-span-1">
+            <Card className="p-6 sm:p-7 bg-gradient-to-br from-white to-teal-50/50 border-teal-100/80 shadow-lg shadow-teal-900/5 sticky top-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-2xl" aria-hidden>
+                  🤖
+                </span>
+                <h3 className="font-bold text-slate-900 text-lg">AI triage</h3>
+                <ComingSoon variant="badge" message="Coming Soon" />
+              </div>
+              <ComingSoon variant="card" message="Smart triage suggestions will appear here." />
+              <div className="mt-6 pt-6 border-t border-teal-100 text-xs text-slate-600 space-y-2">
+                <p className="font-semibold text-slate-800">Tips</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Mention sounds, error codes, and when the issue started.</li>
+                  <li>Add photo links if safe to share.</li>
+                  <li>Select multiple visit windows — we&apos;ll optimize scheduling.</li>
+                </ul>
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

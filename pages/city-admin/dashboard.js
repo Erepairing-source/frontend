@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
@@ -18,6 +18,13 @@ import {
 
 const LocationMap = dynamic(() => import('../../components/LocationMap'), { ssr: false })
 import { getApiBase } from '../../lib/api'
+import { ChartCard } from '../../components/analytics'
+import {
+  ResponsiveContainer,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell
+} from 'recharts'
+
+const CITY_CHART_COLORS = ['#0d9488', '#7c3aed', '#ea580c', '#16a34a', '#db2777']
 
 export default function CityAdminDashboard({ user }) {
   const [dashboardData, setDashboardData] = useState(null)
@@ -80,7 +87,26 @@ export default function CityAdminDashboard({ user }) {
   })
   const [redispatchSuggestions, setRedispatchSuggestions] = useState([])
   const [fraudAnomalies, setFraudAnomalies] = useState([])
+  const [cityAnalytics, setCityAnalytics] = useState(null)
+  const [cityEscalations, setCityEscalations] = useState([])
+  const [forceCloseModal, setForceCloseModal] = useState({ open: false, ticketId: null, escalationId: null })
+  const [forceCloseNotes, setForceCloseNotes] = useState('')
+  const [forceCloseLoading, setForceCloseLoading] = useState(false)
+  const [escalationQueueFilter, setEscalationQueueFilter] = useState('all')
   const router = useRouter()
+
+  const filteredCityEscalations = useMemo(() => {
+    return cityEscalations.filter((row) => {
+      const sub = row.extra_data?.subtype
+      if (escalationQueueFilter === 'completion_otp') {
+        return sub === 'completion_otp_not_provided'
+      }
+      if (escalationQueueFilter === 'other') {
+        return sub !== 'completion_otp_not_provided'
+      }
+      return true
+    })
+  }, [cityEscalations, escalationQueueFilter])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -165,6 +191,17 @@ export default function CityAdminDashboard({ user }) {
         const data = await dashboardRes.json()
         setDashboardData(data)
         setStats(data.statistics || {})
+      }
+
+      if (activeTab === 'escalations') {
+        const escRes = await fetch(getApiBase() + '/city-admin/escalations', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (escRes.ok) {
+          setCityEscalations(await escRes.json())
+        } else {
+          setCityEscalations([])
+        }
       }
 
       // Load tickets from database
@@ -258,8 +295,20 @@ export default function CityAdminDashboard({ user }) {
         })
         if (fraudRes.ok) {
           const fraudData = await fraudRes.json()
-          setFraudAnomalies(Array.isArray(fraudData) ? fraudData : [])
+          const list = Array.isArray(fraudData)
+            ? fraudData
+            : (fraudData.detected_anomalies || [])
+          setFraudAnomalies(list)
         }
+      }
+
+      const analyticsRes = await fetch(`${getApiBase()}/city-admin/analytics?time_range=30d`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (analyticsRes.ok) {
+        setCityAnalytics(await analyticsRes.json())
+      } else {
+        setCityAnalytics(null)
       }
 
       setLoading(false)
@@ -524,6 +573,45 @@ export default function CityAdminDashboard({ user }) {
     }
   }
 
+  const submitForceClose = async () => {
+    if (!forceCloseModal.ticketId || !forceCloseNotes.trim()) {
+      alert('Please enter resolution notes.')
+      return
+    }
+    setForceCloseLoading(true)
+    const token = localStorage.getItem('token')
+    try {
+      const response = await fetch(
+        `${getApiBase()}/city-admin/tickets/${forceCloseModal.ticketId}/force-close`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            resolution_notes: forceCloseNotes.trim(),
+            escalation_id: forceCloseModal.escalationId,
+            close_as: 'resolved'
+          })
+        }
+      )
+      const data = await response.json().catch(() => ({}))
+      if (response.ok) {
+        alert(data.message || 'Ticket closed by city admin')
+        setForceCloseModal({ open: false, ticketId: null, escalationId: null })
+        setForceCloseNotes('')
+        loadDashboardData(token)
+      } else {
+        alert(data.detail || 'Could not close ticket')
+      }
+    } catch (error) {
+      alert('Could not close ticket')
+    } finally {
+      setForceCloseLoading(false)
+    }
+  }
+
   const categoryOptions = Array.from(new Set(tickets.map(t => t.product_category).filter(Boolean)))
   const brandOptions = Array.from(new Set(tickets.map(t => t.oem_brand).filter(Boolean)))
   const partnerOptions = Array.from(new Set(tickets.map(t => t.partner_id).filter(Boolean)))
@@ -742,12 +830,14 @@ export default function CityAdminDashboard({ user }) {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1 h-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="escalations">Escalations</TabsTrigger>
             <TabsTrigger value="tickets">Tickets</TabsTrigger>
             <TabsTrigger value="engineers">Engineers</TabsTrigger>
             <TabsTrigger value="inventory">Inventory</TabsTrigger>
-            <TabsTrigger value="parts-approval">Parts Approval</TabsTrigger>
+            <TabsTrigger value="parts-approval">Parts</TabsTrigger>
             <TabsTrigger value="complaints">Feedback</TabsTrigger>
           </TabsList>
 
@@ -884,6 +974,168 @@ export default function CityAdminDashboard({ user }) {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50/80 to-cyan-50/50 p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+                <BarChart3 className="text-teal-600" size={26} />
+                City analytics
+              </h2>
+              <p className="text-gray-600 text-sm mb-6">Ticket trends and distributions for your city (last 30 days).</p>
+              {cityAnalytics ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <ChartCard title="Daily ticket volume" subtitle={`Period: ${cityAnalytics.period}`}>
+                    <div className="h-[260px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={cityAnalytics.daily_trend || []}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={54} />
+                          <YAxis />
+                          <Tooltip />
+                          <Line type="monotone" dataKey="tickets" stroke="#0d9488" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </ChartCard>
+                  <ChartCard title="By status">
+                    <div className="h-[260px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={Object.entries(cityAnalytics.status_distribution || {}).map(([name, value]) => ({ name, value }))}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                            {Object.keys(cityAnalytics.status_distribution || {}).map((_, i) => (
+                              <Cell key={i} fill={CITY_CHART_COLORS[i % CITY_CHART_COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </ChartCard>
+                  <ChartCard title="By priority">
+                    <div className="h-[260px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={Object.entries(cityAnalytics.priority_distribution || {}).map(([name, value]) => ({ name, value }))}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </ChartCard>
+                </div>
+              ) : (
+                <p className="text-gray-600 text-sm">Analytics could not be loaded.</p>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="escalations" className="space-y-6">
+            <Card className="border-amber-200 bg-gradient-to-br from-amber-50/90 to-orange-50/40">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-950">
+                  <AlertCircle size={22} className="text-amber-600" />
+                  Pending escalations
+                </CardTitle>
+                <p className="text-sm text-amber-900/80">
+                  Engineer-raised issues (e.g. customer did not provide completion OTP). Review and force-close the ticket with notes when appropriate.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-4">
+                  {[
+                    { id: 'all', label: 'All' },
+                    { id: 'completion_otp', label: 'Completion OTP' },
+                    { id: 'other', label: 'Other' }
+                  ].map((opt) => (
+                    <Button
+                      key={opt.id}
+                      type="button"
+                      size="sm"
+                      variant={escalationQueueFilter === opt.id ? 'default' : 'outline'}
+                      className={escalationQueueFilter === opt.id ? 'bg-amber-800 hover:bg-amber-900' : ''}
+                      onClick={() => setEscalationQueueFilter(opt.id)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {cityEscalations.length === 0 ? (
+                  <p className="text-sm text-gray-600 py-6 text-center">No pending escalations.</p>
+                ) : filteredCityEscalations.length === 0 ? (
+                  <p className="text-sm text-gray-600 py-6 text-center">No escalations match this filter.</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-amber-100 bg-white">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-amber-50/80">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Ticket</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Type</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Reason</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Detail</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Created</th>
+                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredCityEscalations.map((row) => {
+                          const sub = row.extra_data?.subtype
+                          const detail =
+                            sub === 'completion_otp_not_provided'
+                              ? 'Completion OTP not provided'
+                              : sub
+                              ? String(sub).replace(/_/g, ' ')
+                              : '—'
+                          return (
+                            <tr key={row.id} className="hover:bg-amber-50/30">
+                              <td className="px-4 py-3 font-medium text-teal-800">
+                                {row.ticket_number || `#${row.ticket_id}`}
+                              </td>
+                              <td className="px-4 py-3">
+                                <Badge variant="outline" className="font-normal">
+                                  {row.escalation_type || '—'}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3 text-gray-700 max-w-xs truncate" title={row.reason}>
+                                {row.reason || '—'}
+                              </td>
+                              <td className="px-4 py-3 text-gray-600">{detail}</td>
+                              <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                                {row.created_at
+                                  ? new Date(row.created_at).toLocaleString()
+                                  : '—'}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  className="bg-amber-700 hover:bg-amber-800"
+                                  onClick={() => {
+                                    setForceCloseNotes('')
+                                    setForceCloseModal({
+                                      open: true,
+                                      ticketId: row.ticket_id,
+                                      escalationId: row.id
+                                    })
+                                  }}
+                                >
+                                  Force close
+                                </Button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Tickets Tab */}
@@ -2127,6 +2379,64 @@ export default function CityAdminDashboard({ user }) {
                     Save
                   </Button>
                   <Button variant="outline" onClick={() => setShowHqModal(false)} className="flex-1">
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {forceCloseModal.open && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-lg w-full border-amber-200 shadow-xl">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Force close ticket</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setForceCloseModal({ open: false, ticketId: null, escalationId: null })
+                      setForceCloseNotes('')
+                    }}
+                  >
+                    <X size={20} />
+                  </Button>
+                </div>
+                <p className="text-sm text-gray-600 font-normal pt-1">
+                  Closes the ticket without customer completion OTP. Resolution notes are required for audit.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="force-close-notes">Resolution notes</Label>
+                  <Textarea
+                    id="force-close-notes"
+                    rows={5}
+                    value={forceCloseNotes}
+                    onChange={(e) => setForceCloseNotes(e.target.value)}
+                    placeholder="Describe how the case was closed (visible in ticket history)."
+                    className="mt-1"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 bg-amber-700 hover:bg-amber-800"
+                    disabled={forceCloseLoading}
+                    onClick={submitForceClose}
+                  >
+                    {forceCloseLoading ? 'Closing…' : 'Confirm force close'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    disabled={forceCloseLoading}
+                    onClick={() => {
+                      setForceCloseModal({ open: false, ticketId: null, escalationId: null })
+                      setForceCloseNotes('')
+                    }}
+                  >
                     Cancel
                   </Button>
                 </div>

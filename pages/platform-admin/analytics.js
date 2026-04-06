@@ -84,7 +84,7 @@ export default function AnalyticsPage() {
     )
   }
 
-  const { overview, revenue, growth, tickets, distributions, top_vendors, advanced_metrics, daily_trends, revenue_by_plan } = analytics
+  const { overview, revenue, growth, tickets, distributions, top_vendors, advanced_metrics, daily_trends, revenue_by_plan, ticket_priority_distribution } = analytics
 
   // Prepare chart data
   const monthlySignupData = growth.monthly_signups.map(m => ({
@@ -111,6 +111,11 @@ export default function AnalyticsPage() {
     revenue: plan.revenue,
     subscriptions: plan.subscriptions
   })) || []
+
+  const ticketPriorityData = Object.entries(ticket_priority_distribution || {}).map(([name, value]) => ({
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    value
+  }))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -397,6 +402,39 @@ export default function AnalyticsPage() {
             </ResponsiveContainer>
           </Card>
         </div>
+
+        {ticketPriorityData.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <Card className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Platform ticket priority (all time)</h2>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={ticketPriorityData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+            <Card className="p-6 border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-white">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Matrix snapshot</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Compare org types (pie above) with subscription mix (pie above). Priority distribution shows workload skew across the platform.
+              </p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="p-3 rounded-lg bg-white border border-gray-100">
+                  <p className="text-gray-500">Total tickets</p>
+                  <p className="text-2xl font-bold text-gray-900">{tickets.total}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-white border border-gray-100">
+                  <p className="text-gray-500">Resolution rate</p>
+                  <p className="text-2xl font-bold text-emerald-700">{advanced_metrics?.resolution_rate?.toFixed(1) ?? 0}%</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* Ticket Statistics */}
         <Card className="p-6 mb-8">

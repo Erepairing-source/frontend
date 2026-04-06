@@ -10,6 +10,14 @@ import {
 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import { getApiBase } from '../../lib/api'
+import { downloadCsv, downloadJson } from '../../lib/export'
+import { ChartCard } from '../../components/analytics'
+import {
+  ResponsiveContainer,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell
+} from 'recharts'
+
+const CHART_COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#0891b2']
 
 export default function CountryAdminDashboard() {
   const router = useRouter()
@@ -31,6 +39,7 @@ export default function CountryAdminDashboard() {
   const [oemDefects, setOemDefects] = useState([])
   const [selectedState, setSelectedState] = useState('all')
   const [timeRange, setTimeRange] = useState('30d')
+  const [analytics, setAnalytics] = useState(null)
 
   useEffect(() => {
     loadDashboardData()
@@ -96,6 +105,15 @@ export default function CountryAdminDashboard() {
         setOemDefects(await defectRes.json())
       }
 
+      const analyticsRes = await fetch(`${getApiBase()}/country-admin/analytics?time_range=${timeRange}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (analyticsRes.ok) {
+        setAnalytics(await analyticsRes.json())
+      } else {
+        setAnalytics(null)
+      }
+
       setLoading(false)
     } catch (error) {
       console.error('Error loading dashboard:', error)
@@ -117,6 +135,55 @@ export default function CountryAdminDashboard() {
   const filteredStates = selectedState === 'all' 
     ? states 
     : states.filter(s => (s.id != null ? String(s.id) : `noid-${s.name}`) === selectedState)
+
+  const exportStatesCsv = () => {
+    const rows = filteredStates.map((s) => ({
+      state: s.name,
+      sla_pct: s.slaCompliance,
+      mttr_h: s.mttr,
+      ftfr_pct: s.ftfr,
+      nps: s.nps,
+      status: s.status,
+      tickets: s.ticketCount ?? 0,
+      state_id: s.id ?? ''
+    }))
+    downloadCsv(
+      `country-admin-states-${timeRange}-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['state', 'tickets', 'sla_pct', 'mttr_h', 'ftfr_pct', 'nps', 'status', 'state_id'],
+      rows
+    )
+  }
+
+  const exportStatesJson = () => {
+    downloadJson(
+      `country-admin-states-${timeRange}-${new Date().toISOString().slice(0, 10)}.json`,
+      { timeRange, selectedState, states: filteredStates, stats }
+    )
+  }
+
+  const exportPartnersCsv = () => {
+    const rows = partners.map((p) => ({
+      partner: p.name,
+      tickets: p.ticketsHandled,
+      sla_pct: p.slaAdherence,
+      cost_per_ticket: p.costPerTicket,
+      nps: p.nps,
+      status: p.status,
+      partner_id: p.id
+    }))
+    downloadCsv(
+      `country-admin-partners-${timeRange}-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['partner', 'tickets', 'sla_pct', 'cost_per_ticket', 'nps', 'status', 'partner_id'],
+      rows
+    )
+  }
+
+  const exportPartnersJson = () => {
+    downloadJson(
+      `country-admin-partners-${timeRange}-${new Date().toISOString().slice(0, 10)}.json`,
+      { timeRange, partners }
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -219,6 +286,96 @@ export default function CountryAdminDashboard() {
           />
         </div>
 
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <BarChart3 className="text-indigo-600" size={22} />
+            National analytics
+          </h2>
+          {analytics && (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <ChartCard title={`Ticket volume (${analytics.period})`} subtitle="Created per day">
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={analytics.daily_trend || []}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={54} />
+                        <YAxis />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="tickets" stroke="#2563eb" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+                <ChartCard title="Tickets by status" subtitle="In selected period">
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={Object.entries(analytics.status_distribution || {}).map(([name, value]) => ({ name, value }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                          {Object.keys(analytics.status_distribution || {}).map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+                <ChartCard title="Tickets by priority" subtitle="In selected period">
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={Object.entries(analytics.priority_distribution || {}).map(([name, value]) => ({ name, value }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="#7c3aed" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ChartCard title="Top states by ticket volume" subtitle="All-time counts in scope">
+                  <div className="h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        layout="vertical"
+                        data={[...states]
+                          .filter((s) => s.id != null && (s.ticketCount ?? 0) > 0)
+                          .sort((a, b) => (b.ticketCount || 0) - (a.ticketCount || 0))
+                          .slice(0, 12)
+                          .map((s) => ({ name: s.name.length > 18 ? `${s.name.slice(0, 16)}…` : s.name, tickets: s.ticketCount || 0 }))}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
+                        <Tooltip />
+                        <Bar dataKey="tickets" fill="#0ea5e9" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+                <ChartCard title="Partner SLA snapshot" subtitle="When partners are linked">
+                  <div className="h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={partners.slice(0, 10).map((p) => ({ name: p.name.length > 14 ? `${p.name.slice(0, 12)}…` : p.name, sla: p.slaAdherence }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={70} />
+                        <YAxis domain={[0, 100]} />
+                        <Tooltip />
+                        <Bar dataKey="sla" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* State Performance */}
         <Card className="mb-6">
@@ -228,10 +385,15 @@ export default function CountryAdminDashboard() {
                 <Globe size={20} />
                 State Performance Overview
               </CardTitle>
-              <Button variant="outline" size="sm">
-                <Download size={16} className="mr-2" />
-                Export
-              </Button>
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" type="button" onClick={exportStatesCsv} title="Download CSV">
+                  <Download size={16} className="mr-2" />
+                  Export CSV
+                </Button>
+                <Button variant="ghost" size="sm" type="button" onClick={exportStatesJson} title="Download JSON">
+                  JSON
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -306,10 +468,15 @@ export default function CountryAdminDashboard() {
                   <Building2 size={20} />
                   Partner Performance Management
                 </CardTitle>
-                <Button variant="outline" size="sm">
-                  <Download size={16} className="mr-2" />
-                  Export
-                </Button>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="sm" type="button" onClick={exportPartnersCsv} title="Download CSV">
+                    <Download size={16} className="mr-2" />
+                    Export CSV
+                  </Button>
+                  <Button variant="ghost" size="sm" type="button" onClick={exportPartnersJson} title="Download JSON">
+                    JSON
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

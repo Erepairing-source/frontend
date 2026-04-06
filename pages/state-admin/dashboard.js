@@ -25,6 +25,14 @@ import {
   X
 } from 'lucide-react'
 import { getApiBase } from '../../lib/api'
+import { downloadCsv, downloadJson } from '../../lib/export'
+import { ChartCard } from '../../components/analytics'
+import {
+  ResponsiveContainer,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell
+} from 'recharts'
+
+const STATE_CHART_COLORS = ['#4f46e5', '#db2777', '#ea580c', '#16a34a', '#0891b2', '#9333ea']
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
@@ -62,6 +70,7 @@ export default function StateAdminDashboard() {
   const [trainingGaps, setTrainingGaps] = useState([])
   const [policyTargetHours, setPolicyTargetHours] = useState(24)
   const [policyImpact, setPolicyImpact] = useState(null)
+  const [analytics, setAnalytics] = useState(null)
   const [transferForm, setTransferForm] = useState({
     from_city_id: '',
     to_city_id: '',
@@ -161,6 +170,15 @@ export default function StateAdminDashboard() {
           })
         })
         setInventoryParts(flatParts)
+      }
+
+      const analyticsRes = await fetch(`${getApiBase()}/state-admin/analytics?time_range=${timeRange}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (analyticsRes.ok) {
+        setAnalytics(await analyticsRes.json())
+      } else {
+        setAnalytics(null)
       }
 
       setLoading(false)
@@ -275,6 +293,31 @@ export default function StateAdminDashboard() {
     ? cities 
     : cities.filter(c => cityKey(c) === selectedCity)
 
+  const exportCitiesCsv = () => {
+    const rows = filteredCities.map((c) => ({
+      city: c.name,
+      sla_pct: c.slaCompliance,
+      mttr_h: c.mttr,
+      tickets: c.ticketCount ?? 0,
+      repeat_visits: c.repeatVisits,
+      stockouts: c.stockoutIncidents,
+      status: c.status,
+      city_id: c.id ?? ''
+    }))
+    downloadCsv(
+      `state-admin-cities-${timeRange}-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['city', 'tickets', 'sla_pct', 'mttr_h', 'repeat_visits', 'stockouts', 'status', 'city_id'],
+      rows
+    )
+  }
+
+  const exportCitiesJson = () => {
+    downloadJson(
+      `state-admin-cities-${timeRange}-${new Date().toISOString().slice(0, 10)}.json`,
+      { timeRange, selectedCity, cities: filteredCities, stats }
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -364,6 +407,108 @@ export default function StateAdminDashboard() {
           />
         </div>
 
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <BarChart3 className="text-indigo-600" size={22} />
+            State analytics
+          </h2>
+          {analytics && (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <ChartCard title={`Ticket volume (${analytics.period})`} subtitle="Created per day in this state">
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={analytics.daily_trend || []}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={54} />
+                        <YAxis />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="tickets" stroke="#4f46e5" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+                <ChartCard title="Tickets by status">
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={Object.entries(analytics.status_distribution || {}).map(([name, value]) => ({ name, value }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                          {Object.keys(analytics.status_distribution || {}).map((_, i) => (
+                            <Cell key={i} fill={STATE_CHART_COLORS[i % STATE_CHART_COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+                <ChartCard title="Tickets by priority">
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={Object.entries(analytics.priority_distribution || {}).map(([name, value]) => ({ name, value }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="#db2777" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ChartCard title="Top districts / cities by tickets" subtitle="In database scope">
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        layout="vertical"
+                        data={[...cities]
+                          .filter((c) => c.id != null && (c.ticketCount ?? 0) > 0)
+                          .sort((a, b) => (b.ticketCount || 0) - (a.ticketCount || 0))
+                          .slice(0, 14)
+                          .map((c) => ({
+                            name: c.name.length > 20 ? `${c.name.slice(0, 18)}…` : c.name,
+                            tickets: c.ticketCount || 0
+                          }))}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Bar dataKey="tickets" fill="#0ea5e9" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+                <ChartCard title="SLA % by city (sample)" subtitle="Top 12 by ticket count">
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={[...cities]
+                          .filter((c) => c.id != null && (c.ticketCount ?? 0) > 0)
+                          .sort((a, b) => (b.ticketCount || 0) - (a.ticketCount || 0))
+                          .slice(0, 12)
+                          .map((c) => ({
+                            name: c.name.length > 12 ? `${c.name.slice(0, 10)}…` : c.name,
+                            sla: c.slaCompliance
+                          }))}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-25} textAnchor="end" height={72} />
+                        <YAxis domain={[0, 100]} />
+                        <Tooltip />
+                        <Bar dataKey="sla" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* City Performance Table */}
         <Card className="mb-6">
@@ -373,10 +518,15 @@ export default function StateAdminDashboard() {
                 <MapPin size={20} />
                 City Performance Comparison
               </CardTitle>
-              <Button variant="outline" size="sm">
-                <Download size={16} className="mr-2" />
-                Export
-              </Button>
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" type="button" onClick={exportCitiesCsv} title="Download CSV">
+                  <Download size={16} className="mr-2" />
+                  Export CSV
+                </Button>
+                <Button variant="ghost" size="sm" type="button" onClick={exportCitiesJson} title="Download JSON">
+                  JSON
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
