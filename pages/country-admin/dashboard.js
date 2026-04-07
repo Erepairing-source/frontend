@@ -231,6 +231,10 @@ export default function CountryAdminDashboard() {
               <RefreshCw size={16} className="mr-2" />
               Refresh
             </Button>
+            <Button onClick={() => router.push('/country-admin/analytics')}>
+              <BarChart3 size={16} className="mr-2" />
+              Analytics Workspace
+            </Button>
           </div>
         </Card>
 
@@ -291,7 +295,7 @@ export default function CountryAdminDashboard() {
             <BarChart3 className="text-indigo-600" size={22} />
             National analytics
           </h2>
-          {analytics && (
+          {false && analytics && (
             <>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <ChartCard title={`Ticket volume (${analytics.period})`} subtitle="Created per day">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
@@ -322,6 +322,11 @@ export default function OrganizationAdminDashboard() {
   const [productParts, setProductParts] = useState({}) // {productId: [parts]}
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [users, setUsers] = useState([])
+  const [userSegmentTab, setUserSegmentTab] = useState('staff')
+  const [userStateFilter, setUserStateFilter] = useState('all')
+  const [userCityFilter, setUserCityFilter] = useState('all')
+  const [userFilterStates, setUserFilterStates] = useState([])
+  const [userFilterCities, setUserFilterCities] = useState([])
   const [availableRoles, setAvailableRoles] = useState([])
   const [aiCostToServe, setAiCostToServe] = useState([])
   const [aiInventoryForecast, setAiInventoryForecast] = useState([])
@@ -487,6 +492,57 @@ export default function OrganizationAdminDashboard() {
     loadDashboardData()
     loadCountries()
   }, [activeTab])
+
+  useEffect(() => {
+    const orgCountryId = dashboardData?.organization?.country_id
+    if (!orgCountryId) {
+      setUserFilterStates([])
+      return
+    }
+    const loadUserStates = async () => {
+      try {
+        const res = await fetch(`${getApiBase()}/locations/states?country_id=${orgCountryId}`)
+        if (!res.ok) {
+          setUserFilterStates([])
+          return
+        }
+        const data = await res.json()
+        setUserFilterStates(Array.isArray(data) ? data : [])
+      } catch {
+        setUserFilterStates([])
+      }
+    }
+    loadUserStates()
+  }, [dashboardData?.organization?.country_id])
+
+  useEffect(() => {
+    if (userStateFilter === 'all') {
+      setUserFilterCities([])
+      setUserCityFilter('all')
+      return
+    }
+    const loadUserCities = async () => {
+      try {
+        const res = await fetch(`${getApiBase()}/locations/cities?state_id=${userStateFilter}`)
+        if (!res.ok) {
+          setUserFilterCities([])
+          return
+        }
+        const data = await res.json()
+        setUserFilterCities(Array.isArray(data) ? data : [])
+      } catch {
+        setUserFilterCities([])
+      }
+    }
+    loadUserCities()
+  }, [userStateFilter])
+
+  useEffect(() => {
+    if (activeTab !== 'users') return
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetchUsersWithFilters(token)
+  }, [activeTab, userStateFilter, userCityFilter, userSegmentTab])
 
   // Load countries on mount - using comprehensive API
   const loadCountries = async () => {
@@ -964,13 +1020,7 @@ export default function OrganizationAdminDashboard() {
           const rolesData = await rolesRes.json()
           setAvailableRoles(rolesData.available_roles || [])
         }
-        
-        // Load users
-        const usersRes = await fetch(getApiBase() + '/users/', { headers })
-        if (usersRes.ok) {
-          const usersData = await usersRes.json()
-          setUsers(Array.isArray(usersData) ? usersData : [])
-        }
+        await fetchUsersWithFilters(token)
       }
 
       if (activeTab === 'inventory') {
@@ -1025,6 +1075,22 @@ export default function OrganizationAdminDashboard() {
     } catch (error) {
       console.error('Error loading dashboard:', error)
       setLoading(false)
+    }
+  }
+
+  const fetchUsersWithFilters = async (token) => {
+    const headers = { 'Authorization': `Bearer ${token}` }
+    const params = new URLSearchParams()
+    // Keep customers on separate tab with backend filtering.
+    if (userSegmentTab === 'customers') {
+      params.set('role', 'customer')
+    }
+    if (userStateFilter !== 'all') params.set('state_id', String(userStateFilter))
+    if (userCityFilter !== 'all') params.set('city_id', String(userCityFilter))
+    const usersRes = await fetch(`${getApiBase()}/users/?${params.toString()}`, { headers })
+    if (usersRes.ok) {
+      const usersData = await usersRes.json()
+      setUsers(Array.isArray(usersData) ? usersData : [])
     }
   }
 
@@ -2613,6 +2679,34 @@ export default function OrganizationAdminDashboard() {
     }
   }
 
+  const isOEM = dashboardData?.organization?.org_type === 'oem'
+  const subDays = subscriptionDaysRemaining(dashboardData?.subscription)
+  const showSubscriptionExpiryBanner =
+    Boolean(dashboardData?.subscription) &&
+    subDays !== null &&
+    subDays <= SUBSCRIPTION_WARNING_DAYS
+
+  const stateNameById = useMemo(
+    () => Object.fromEntries((userFilterStates || []).map((s) => [String(s.id), s.name])),
+    [userFilterStates]
+  )
+  const cityNameById = useMemo(
+    () => Object.fromEntries((userFilterCities || []).map((c) => [String(c.id), c.name])),
+    [userFilterCities]
+  )
+  const usersBySegment = useMemo(() => {
+    const list = Array.isArray(users) ? users : []
+    const isCustomer = (u) => u.role === 'customer'
+    let scoped = userSegmentTab === 'customers' ? list.filter(isCustomer) : list.filter((u) => !isCustomer(u))
+    if (userStateFilter !== 'all') {
+      scoped = scoped.filter((u) => String(u.state_id || '') === String(userStateFilter))
+    }
+    if (userCityFilter !== 'all') {
+      scoped = scoped.filter((u) => String(u.city_id || '') === String(userCityFilter))
+    }
+    return scoped
+  }, [users, userSegmentTab, userStateFilter, userCityFilter])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -2623,13 +2717,6 @@ export default function OrganizationAdminDashboard() {
       </div>
     )
   }
-
-  const isOEM = dashboardData?.organization?.org_type === 'oem'
-  const subDays = subscriptionDaysRemaining(dashboardData?.subscription)
-  const showSubscriptionExpiryBanner =
-    Boolean(dashboardData?.subscription) &&
-    subDays !== null &&
-    subDays <= SUBSCRIPTION_WARNING_DAYS
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -2745,7 +2832,7 @@ export default function OrganizationAdminDashboard() {
                 <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white" title="Subscription expiring soon" />
               )}
             </TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="analytics-hub">Analytics</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -3015,7 +3102,7 @@ export default function OrganizationAdminDashboard() {
                   <Button
                     variant="outline"
                     className="h-auto flex-col py-4"
-                    onClick={() => setActiveTab('analytics')}
+                    onClick={() => setActiveTab('analytics-hub')}
                   >
                     <BarChart3 size={24} className="mb-2" />
                     <span>View Analytics</span>
@@ -3993,11 +4080,55 @@ export default function OrganizationAdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {users.length === 0 ? (
+                  <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <Tabs value={userSegmentTab} onValueChange={setUserSegmentTab} className="w-full md:w-auto">
+                      <TabsList className="grid grid-cols-2 w-full md:w-[320px]">
+                        <TabsTrigger value="staff">Users</TabsTrigger>
+                        <TabsTrigger value="customers">Customers</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto">
+                      <div>
+                        <Label className="text-xs text-gray-500">State</Label>
+                        <Select
+                          value={userStateFilter}
+                          onValueChange={(v) => {
+                            setUserStateFilter(v)
+                            setUserCityFilter('all')
+                          }}
+                        >
+                          <SelectTrigger className="w-full sm:w-[220px]">
+                            <SelectValue placeholder="All states" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All states</SelectItem>
+                            {userFilterStates.map((s) => (
+                              <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">City</Label>
+                        <Select value={userCityFilter} onValueChange={setUserCityFilter}>
+                          <SelectTrigger className="w-full sm:w-[220px]">
+                            <SelectValue placeholder="All cities" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All cities</SelectItem>
+                            {userFilterCities.map((c) => (
+                              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                  {usersBySegment.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <Users size={48} className="mx-auto mb-4 text-gray-400" />
-                      <p>No users found</p>
-                      <p className="text-sm mt-2">Create your first user to get started</p>
+                      <p>No {userSegmentTab === 'customers' ? 'customers' : 'users'} found</p>
+                      <p className="text-sm mt-2">Try clearing state/city filters or create a new entry</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -4008,12 +4139,13 @@ export default function OrganizationAdminDashboard() {
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Phone</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Role</th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Location</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {users.map((user) => (
+                          {usersBySegment.map((user) => (
                             <tr key={user.id} className="hover:bg-gray-50">
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="font-medium text-gray-900">{user.full_name}</div>
@@ -4028,6 +4160,11 @@ export default function OrganizationAdminDashboard() {
                                 <Badge className="capitalize">
                                   {user.role?.replace('_', ' ')}
                                 </Badge>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                {[stateNameById[String(user.state_id || '')], cityNameById[String(user.city_id || '')]]
+                                  .filter(Boolean)
+                                  .join(' · ') || '—'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <Badge className={user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
@@ -4209,7 +4346,27 @@ export default function OrganizationAdminDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Analytics Tab */}
+          {/* Analytics Hub Tab */}
+          <TabsContent value="analytics-hub" className="space-y-6">
+            <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50 to-blue-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 size={22} />
+                  Analytics Workspace
+                </CardTitle>
+                <p className="text-sm text-gray-600">
+                  Open the dedicated analytics page for advanced org insights and executive visualizations.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => router.push('/organization-admin/analytics')}>
+                  Open Analytics
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Legacy Analytics Tab (kept for compatibility) */}
           <TabsContent value="analytics" className="space-y-6">
             {analytics ? (
               <>

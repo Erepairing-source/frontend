@@ -18,6 +18,7 @@ import {
 
 const LocationMap = dynamic(() => import('../../components/LocationMap'), { ssr: false })
 import { getApiBase } from '@lib/api'
+import { getDashboardPathForRole } from '@lib/roleDashboard'
 import { ChartCard } from '../../components/analytics'
 import {
   ResponsiveContainer,
@@ -92,6 +93,7 @@ export default function CityAdminDashboard({ user }) {
   const [forceCloseModal, setForceCloseModal] = useState({ open: false, ticketId: null, escalationId: null })
   const [forceCloseNotes, setForceCloseNotes] = useState('')
   const [forceCloseLoading, setForceCloseLoading] = useState(false)
+  const [approveEscalationLoading, setApproveEscalationLoading] = useState(null)
   const [escalationQueueFilter, setEscalationQueueFilter] = useState('all')
   const router = useRouter()
 
@@ -110,13 +112,18 @@ export default function CityAdminDashboard({ user }) {
 
   useEffect(() => {
     const token = localStorage.getItem('token')
+    const role = user?.role || localStorage.getItem('userRole')
     if (!token) {
       router.push('/login')
       return
     }
+    if (role && role !== 'city_admin') {
+      router.push(getDashboardPathForRole(role))
+      return
+    }
 
     loadDashboardData(token)
-  }, [router, activeTab])
+  }, [router, activeTab, user?.role])
 
   useEffect(() => {
     if (!autoEtaEnabled) return
@@ -612,6 +619,34 @@ export default function CityAdminDashboard({ user }) {
     }
   }
 
+  const approveEscalation = async (row) => {
+    const token = localStorage.getItem('token')
+    setApproveEscalationLoading(row.id)
+    try {
+      const response = await fetch(`${getApiBase()}/city-admin/escalations/${row.id}/approve`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          approval_notes: 'Approved by city admin for OTP-unavailable closure flow.'
+        })
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        alert(data.detail || 'Could not approve escalation')
+        return
+      }
+      alert(data.message || 'Escalation approved')
+      loadDashboardData(token)
+    } catch (e) {
+      alert('Could not approve escalation')
+    } finally {
+      setApproveEscalationLoading(null)
+    }
+  }
+
   const categoryOptions = Array.from(new Set(tickets.map(t => t.product_category).filter(Boolean)))
   const brandOptions = Array.from(new Set(tickets.map(t => t.oem_brand).filter(Boolean)))
   const partnerOptions = Array.from(new Set(tickets.map(t => t.partner_id).filter(Boolean)))
@@ -832,7 +867,7 @@ export default function CityAdminDashboard({ user }) {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1 h-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="analytics-hub">Analytics</TabsTrigger>
             <TabsTrigger value="escalations">Escalations</TabsTrigger>
             <TabsTrigger value="tickets">Tickets</TabsTrigger>
             <TabsTrigger value="engineers">Engineers</TabsTrigger>
@@ -976,63 +1011,23 @@ export default function CityAdminDashboard({ user }) {
             </div>
           </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50/80 to-cyan-50/50 p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-1 flex items-center gap-2">
-                <BarChart3 className="text-teal-600" size={26} />
-                City analytics
-              </h2>
-              <p className="text-gray-600 text-sm mb-6">Ticket trends and distributions for your city (last 30 days).</p>
-              {cityAnalytics ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <ChartCard title="Daily ticket volume" subtitle={`Period: ${cityAnalytics.period}`}>
-                    <div className="h-[260px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={cityAnalytics.daily_trend || []}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={54} />
-                          <YAxis />
-                          <Tooltip />
-                          <Line type="monotone" dataKey="tickets" stroke="#0d9488" strokeWidth={2} dot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </ChartCard>
-                  <ChartCard title="By status">
-                    <div className="h-[260px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={Object.entries(cityAnalytics.status_distribution || {}).map(([name, value]) => ({ name, value }))}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                            {Object.keys(cityAnalytics.status_distribution || {}).map((_, i) => (
-                              <Cell key={i} fill={CITY_CHART_COLORS[i % CITY_CHART_COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </ChartCard>
-                  <ChartCard title="By priority">
-                    <div className="h-[260px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={Object.entries(cityAnalytics.priority_distribution || {}).map(([name, value]) => ({ name, value }))}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </ChartCard>
-                </div>
-              ) : (
-                <p className="text-gray-600 text-sm">Analytics could not be loaded.</p>
-              )}
-            </div>
+          <TabsContent value="analytics-hub" className="space-y-6">
+            <Card className="border-teal-100 bg-gradient-to-br from-teal-50/80 to-cyan-50/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="text-teal-600" size={22} />
+                  City Analytics Workspace
+                </CardTitle>
+                <p className="text-sm text-gray-600">
+                  Open the dedicated analytics tab for deep charts and time-range analysis.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => router.push('/city-admin/analytics')}>
+                  Open Analytics
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="escalations" className="space-y-6">
@@ -1085,6 +1080,8 @@ export default function CityAdminDashboard({ user }) {
                       <tbody className="divide-y divide-gray-100">
                         {filteredCityEscalations.map((row) => {
                           const sub = row.extra_data?.subtype
+                          const isOtpEscalation = sub === 'completion_otp_not_provided'
+                          const isApproved = row.status === 'acknowledged'
                           const detail =
                             sub === 'completion_otp_not_provided'
                               ? 'Completion OTP not provided'
@@ -1111,21 +1108,33 @@ export default function CityAdminDashboard({ user }) {
                                   : '—'}
                               </td>
                               <td className="px-4 py-3 text-right">
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  className="bg-amber-700 hover:bg-amber-800"
-                                  onClick={() => {
-                                    setForceCloseNotes('')
-                                    setForceCloseModal({
-                                      open: true,
-                                      ticketId: row.ticket_id,
-                                      escalationId: row.id
-                                    })
-                                  }}
-                                >
-                                  Force close
-                                </Button>
+                                <div className="flex items-center justify-end gap-2">
+                                  <Badge variant="outline" className="capitalize">{row.status || 'pending'}</Badge>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={isApproved || approveEscalationLoading === row.id}
+                                    onClick={() => approveEscalation(row)}
+                                  >
+                                    {approveEscalationLoading === row.id ? 'Approving…' : (isApproved ? 'Approved' : 'Approve')}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    className="bg-amber-700 hover:bg-amber-800"
+                                    disabled={!isOtpEscalation || !isApproved}
+                                    onClick={() => {
+                                      setForceCloseNotes('')
+                                      setForceCloseModal({
+                                        open: true,
+                                        ticketId: row.ticket_id,
+                                        escalationId: row.id
+                                      })
+                                    }}
+                                  >
+                                    Force close
+                                  </Button>
+                                </div>
                               </td>
                             </tr>
                           )
