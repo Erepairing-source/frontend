@@ -221,6 +221,37 @@ export default function RegisterDevice() {
     }
   }
 
+  const downloadBulkTemplate = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+      return
+    }
+    try {
+      const response = await fetch((getApiBase()) + '/devices/bulk-register-template', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        setErrors({ submit: errorData.detail || 'Failed to download template' })
+        return
+      }
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'bulk_device_registration_template.xlsx'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      setErrors({ submit: 'Failed to download template' })
+    }
+  }
+
   const handleQrDecode = async () => {
     if (!qrImageFile) return
     const token = localStorage.getItem('token')
@@ -406,6 +437,15 @@ export default function RegisterDevice() {
                         <li><strong>purchase_date</strong> (optional) - Format: YYYY-MM-DD</li>
                         <li><strong>invoice_number</strong> (optional) - Invoice number</li>
                       </ul>
+                      <div className="mt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={downloadBulkTemplate}
+                        >
+                          Download Excel Template
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="flex gap-4">

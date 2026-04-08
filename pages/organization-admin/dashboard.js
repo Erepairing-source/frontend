@@ -523,7 +523,27 @@ export default function OrganizationAdminDashboard() {
     }
     const loadUserCities = async () => {
       try {
-        const res = await fetch(`${getApiBase()}/locations/cities?state_id=${userStateFilter}`)
+        const selectedState = (userFilterStates || []).find((s, idx) => {
+          const val = s?.id != null ? `id:${s.id}` : (s?.code ? `code:${s.code}` : `name:${s?.name || idx}`)
+          return val === userStateFilter
+        })
+        let url = ''
+        if (!selectedState) {
+          setUserFilterCities([])
+          return
+        }
+        if (selectedState.id != null) {
+          url = `${getApiBase()}/locations/cities?state_id=${selectedState.id}`
+        } else if (selectedState.code) {
+          const cc = selectedState.country_code || 'IN'
+          url = `${getApiBase()}/locations/cities?country_code=${encodeURIComponent(cc)}&state_code=${encodeURIComponent(selectedState.code)}&use_api=true`
+        } else if (selectedState.name) {
+          url = `${getApiBase()}/locations/india/states/${encodeURIComponent(selectedState.name)}/cities?use_api=true`
+        } else {
+          setUserFilterCities([])
+          return
+        }
+        const res = await fetch(url)
         if (!res.ok) {
           setUserFilterCities([])
           return
@@ -1085,8 +1105,15 @@ export default function OrganizationAdminDashboard() {
     if (userSegmentTab === 'customers') {
       params.set('role', 'customer')
     }
-    if (userStateFilter !== 'all') params.set('state_id', String(userStateFilter))
-    if (userCityFilter !== 'all') params.set('city_id', String(userCityFilter))
+    if (userStateFilter !== 'all') {
+      if (userStateFilter.startsWith('id:')) params.set('state_id', userStateFilter.slice(3))
+      else if (userStateFilter.startsWith('code:')) params.set('state_code', userStateFilter.slice(5))
+      else if (userStateFilter.startsWith('name:')) params.set('state_name', userStateFilter.slice(5))
+    }
+    if (userCityFilter !== 'all') {
+      if (userCityFilter.startsWith('id:')) params.set('city_id', userCityFilter.slice(3))
+      else if (userCityFilter.startsWith('name:')) params.set('city_name', userCityFilter.slice(5))
+    }
     const usersRes = await fetch(`${getApiBase()}/users/?${params.toString()}`, { headers })
     if (usersRes.ok) {
       const usersData = await usersRes.json()
@@ -2697,15 +2724,8 @@ export default function OrganizationAdminDashboard() {
   const usersBySegment = useMemo(() => {
     const list = Array.isArray(users) ? users : []
     const isCustomer = (u) => u.role === 'customer'
-    let scoped = userSegmentTab === 'customers' ? list.filter(isCustomer) : list.filter((u) => !isCustomer(u))
-    if (userStateFilter !== 'all') {
-      scoped = scoped.filter((u) => String(u.state_id || '') === String(userStateFilter))
-    }
-    if (userCityFilter !== 'all') {
-      scoped = scoped.filter((u) => String(u.city_id || '') === String(userCityFilter))
-    }
-    return scoped
-  }, [users, userSegmentTab, userStateFilter, userCityFilter])
+    return userSegmentTab === 'customers' ? list.filter(isCustomer) : list.filter((u) => !isCustomer(u))
+  }, [users, userSegmentTab])
 
   if (loading) {
     return (
@@ -4102,9 +4122,11 @@ export default function OrganizationAdminDashboard() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All states</SelectItem>
-                            {userFilterStates.map((s) => (
-                              <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                            ))}
+                            {userFilterStates.map((s, idx) => {
+                              const value = s?.id != null ? `id:${s.id}` : (s?.code ? `code:${s.code}` : `name:${s?.name || idx}`)
+                              const key = s?.id ?? s?.code ?? `${s?.name || 'state'}-${idx}`
+                              return <SelectItem key={key} value={value}>{s.name}</SelectItem>
+                            })}
                           </SelectContent>
                         </Select>
                       </div>
@@ -4116,9 +4138,11 @@ export default function OrganizationAdminDashboard() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All cities</SelectItem>
-                            {userFilterCities.map((c) => (
-                              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                            ))}
+                            {userFilterCities.map((c, idx) => {
+                              const value = c?.id != null ? `id:${c.id}` : `name:${c?.name || idx}`
+                              const key = c?.id ?? `${c?.name || 'city'}-${idx}`
+                              return <SelectItem key={key} value={value}>{c.name}</SelectItem>
+                            })}
                           </SelectContent>
                         </Select>
                       </div>
