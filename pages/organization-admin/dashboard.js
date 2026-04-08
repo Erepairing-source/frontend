@@ -4186,7 +4186,10 @@ export default function OrganizationAdminDashboard() {
                                 </Badge>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                {[stateNameById[String(user.state_id || '')], cityNameById[String(user.city_id || '')]]
+                                {[
+                                  user.state_name || stateNameById[String(user.state_id || '')],
+                                  user.city_name || cityNameById[String(user.city_id || '')]
+                                ]
                                   .filter(Boolean)
                                   .join(' · ') || '—'}
                               </td>
