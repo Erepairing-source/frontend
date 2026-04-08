@@ -97,14 +97,25 @@ export default function CityAdminDashboard({ user }) {
   const [escalationQueueFilter, setEscalationQueueFilter] = useState('all')
   const router = useRouter()
 
+  const isCompletionOtpEscalation = (row) => {
+    const sub = String(row?.extra_data?.subtype || '').trim().toLowerCase()
+    const escType = String(row?.escalation_type || '').trim().toLowerCase()
+    const reason = String(row?.reason || '').trim().toLowerCase()
+    return (
+      sub === 'completion_otp_not_provided' ||
+      escType === 'completion_otp_not_provided' ||
+      (reason.includes('completion otp') && reason.includes('not provide'))
+    )
+  }
+
   const filteredCityEscalations = useMemo(() => {
     return cityEscalations.filter((row) => {
-      const sub = row.extra_data?.subtype
+      const isOtp = isCompletionOtpEscalation(row)
       if (escalationQueueFilter === 'completion_otp') {
-        return sub === 'completion_otp_not_provided'
+        return isOtp
       }
       if (escalationQueueFilter === 'other') {
-        return sub !== 'completion_otp_not_provided'
+        return !isOtp
       }
       return true
     })
@@ -1080,10 +1091,10 @@ export default function CityAdminDashboard({ user }) {
                       <tbody className="divide-y divide-gray-100">
                         {filteredCityEscalations.map((row) => {
                           const sub = row.extra_data?.subtype
-                          const isOtpEscalation = sub === 'completion_otp_not_provided'
+                          const isOtpEscalation = isCompletionOtpEscalation(row)
                           const isApproved = row.status === 'acknowledged'
                           const detail =
-                            sub === 'completion_otp_not_provided'
+                            isOtpEscalation
                               ? 'Completion OTP not provided'
                               : sub
                               ? String(sub).replace(/_/g, ' ')
