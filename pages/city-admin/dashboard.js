@@ -1091,8 +1091,9 @@ export default function CityAdminDashboard({ user }) {
                       <tbody className="divide-y divide-gray-100">
                         {filteredCityEscalations.map((row) => {
                           const sub = row.extra_data?.subtype
-                          const isOtpEscalation = isCompletionOtpEscalation(row)
+                          const isOtpEscalation = row.is_completion_otp ?? isCompletionOtpEscalation(row)
                           const isApproved = row.status === 'acknowledged'
+                          const canForceClose = row.can_force_close ?? (isOtpEscalation && isApproved)
                           const detail =
                             isOtpEscalation
                               ? 'Completion OTP not provided'
@@ -1133,7 +1134,14 @@ export default function CityAdminDashboard({ user }) {
                                     size="sm"
                                     variant="default"
                                     className="bg-amber-700 hover:bg-amber-800"
-                                    disabled={!isOtpEscalation || !isApproved}
+                                    disabled={!canForceClose}
+                                    title={
+                                      canForceClose
+                                        ? 'Force close this OTP escalation'
+                                        : isOtpEscalation
+                                        ? 'Approve escalation first'
+                                        : 'Only completion OTP escalations can be force-closed'
+                                    }
                                     onClick={() => {
                                       setForceCloseNotes('')
                                       setForceCloseModal({
@@ -1143,7 +1151,7 @@ export default function CityAdminDashboard({ user }) {
                                       })
                                     }}
                                   >
-                                    Force close
+                                    {canForceClose ? 'Force close' : (isOtpEscalation ? 'Approve first' : 'Not eligible')}
                                   </Button>
                                 </div>
                               </td>
