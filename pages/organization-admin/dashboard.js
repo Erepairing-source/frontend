@@ -322,6 +322,8 @@ export default function OrganizationAdminDashboard() {
   const [productParts, setProductParts] = useState({}) // {productId: [parts]}
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [users, setUsers] = useState([])
+  const [labourChargeForm, setLabourChargeForm] = useState({ in_warranty: '0', off_warranty: '300' })
+  const [savingLabourCharges, setSavingLabourCharges] = useState(false)
   const [userSegmentTab, setUserSegmentTab] = useState('staff')
   const [userStateFilter, setUserStateFilter] = useState('all')
   const [userCityFilter, setUserCityFilter] = useState('all')
@@ -492,6 +494,15 @@ export default function OrganizationAdminDashboard() {
     loadDashboardData()
     loadCountries()
   }, [activeTab])
+
+  useEffect(() => {
+    const fixed = dashboardData?.organization?.fixed_labour_charges
+    if (!fixed || typeof fixed !== 'object') return
+    setLabourChargeForm({
+      in_warranty: String(fixed.in_warranty ?? 0),
+      off_warranty: String(fixed.off_warranty ?? 300),
+    })
+  }, [dashboardData?.organization?.fixed_labour_charges])
 
   useEffect(() => {
     const orgCountryId = dashboardData?.organization?.country_id
@@ -1118,6 +1129,48 @@ export default function OrganizationAdminDashboard() {
     if (usersRes.ok) {
       const usersData = await usersRes.json()
       setUsers(Array.isArray(usersData) ? usersData : [])
+    }
+  }
+
+  const saveLabourCharges = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+      return
+    }
+    const inW = Number(labourChargeForm.in_warranty)
+    const offW = Number(labourChargeForm.off_warranty)
+    if (!Number.isFinite(inW) || inW < 0 || !Number.isFinite(offW) || offW < 0) {
+      alert('Please enter valid non-negative labour charges.')
+      return
+    }
+    setSavingLabourCharges(true)
+    try {
+      const response = await fetch(getApiBase() + '/org-admin/labour-charges', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ in_warranty: inW, off_warranty: offW }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        alert(data.detail || 'Failed to save labour charges')
+        return
+      }
+      setDashboardData((prev) => ({
+        ...prev,
+        organization: {
+          ...(prev?.organization || {}),
+          fixed_labour_charges: data.fixed_labour_charges || { in_warranty: inW, off_warranty: offW },
+        },
+      }))
+      alert('Labour charges updated')
+    } catch (error) {
+      alert('Failed to save labour charges')
+    } finally {
+      setSavingLabourCharges(false)
     }
   }
 
@@ -2902,6 +2955,39 @@ export default function OrganizationAdminDashboard() {
                       <p className="whitespace-pre-wrap">{dashboardData.organization.address}</p>
                     </div>
                   )}
+                  <div className="border rounded-lg p-4 bg-slate-50/70 space-y-3">
+                    <Label className="text-gray-700 font-semibold">Fixed labour charges (estimation)</Label>
+                    <p className="text-xs text-gray-600">
+                      In-warranty can still have labour charges. Set 0 if you do not charge.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="in-warranty-labour">In warranty (INR)</Label>
+                        <Input
+                          id="in-warranty-labour"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={labourChargeForm.in_warranty}
+                          onChange={(e) => setLabourChargeForm((prev) => ({ ...prev, in_warranty: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="off-warranty-labour">Off warranty (INR)</Label>
+                        <Input
+                          id="off-warranty-labour"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={labourChargeForm.off_warranty}
+                          onChange={(e) => setLabourChargeForm((prev) => ({ ...prev, off_warranty: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <Button type="button" variant="outline" onClick={saveLabourCharges} disabled={savingLabourCharges}>
+                      {savingLabourCharges ? 'Saving…' : 'Save Labour Charges'}
+                    </Button>
+                  </div>
                   <Button variant="outline" className="w-full">
                     <Edit size={16} className="mr-2" />
                     Edit Organization
