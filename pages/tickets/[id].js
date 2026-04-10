@@ -27,6 +27,8 @@ export default function TicketRedirect() {
         const role = data?.role
         if (role === 'customer') {
           router.replace(`/customer/ticket/${id}`)
+        } else if (role === 'support_agent') {
+          router.replace(`/customer/ticket/${id}`)
         } else if (role === 'support_engineer') {
           router.replace(`/engineer/ticket/${id}`)
         } else if (['city_admin', 'state_admin', 'country_admin', 'organization_admin', 'platform_admin'].includes(role)) {

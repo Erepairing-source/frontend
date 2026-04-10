@@ -25,7 +25,8 @@ export default function Layout({ children, user, setUser }) {
       'country_admin': 'Country Admin',
       'organization_admin': 'Organization Admin',
       'platform_admin': 'Platform Admin',
-      'vendor': 'Vendor'
+      'vendor': 'Vendor',
+      'support_agent': 'Support Agent'
     }
     return roleNames[role] || 'User'
   }

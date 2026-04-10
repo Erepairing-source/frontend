@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
@@ -192,6 +193,11 @@ export default function CountryAdminDashboard() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Country Admin Dashboard</h1>
           <p className="text-gray-600">National performance monitoring and strategic management</p>
+          <p className="mt-2">
+            <Link href="/country-admin/tickets" className="text-indigo-600 hover:text-indigo-800 font-medium text-sm">
+              Tickets and escalations →
+            </Link>
+          </p>
         </div>
 
         {/* Filters */}
