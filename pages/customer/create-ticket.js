@@ -23,6 +23,9 @@ function FormSection({ eyebrow, title, subtitle, children, className = '' }) {
 
 export default function CreateTicket() {
   const [formData, setFormData] = useState({
+    customer_name: '',
+    customer_company: '',
+    customer_phone: '',
     issue_description: '',
     service_address: '',
     priority: 'medium',
@@ -49,6 +52,25 @@ export default function CreateTicket() {
   const [selfLoading, setSelfLoading] = useState(false)
   const router = useRouter()
   const { device_id } = router.query
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetch(`${getApiBase()}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((profile) => {
+        if (!profile) return
+        setFormData((prev) => ({
+          ...prev,
+          customer_name: prev.customer_name || profile.full_name || '',
+          customer_company: prev.customer_company || profile.organization_name || '',
+          customer_phone: prev.customer_phone || profile.phone || ''
+        }))
+      })
+      .catch(() => null)
+  }, [])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -106,8 +128,8 @@ export default function CreateTicket() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!deviceId) {
-      alert('Please select a registered device.')
+    if (!formData.customer_name.trim() || !formData.customer_company.trim() || !formData.customer_phone.trim()) {
+      alert('Please enter customer name, company, and number.')
       return
     }
     setLoading(true)
@@ -122,8 +144,11 @@ export default function CreateTicket() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          customer_name: formData.customer_name.trim(),
+          customer_company: formData.customer_company.trim(),
+          customer_phone: formData.customer_phone.trim(),
           issue_description: formData.issue_description,
-          device_id: parseInt(deviceId, 10),
+          device_id: deviceId ? parseInt(deviceId, 10) : null,
           service_address: formData.service_address,
           priority: formData.priority,
           issue_language: formData.issue_language,
@@ -247,7 +272,7 @@ export default function CreateTicket() {
               Create a service ticket
             </h1>
             <p className="mt-2 text-slate-600 max-w-2xl">
-              Tell us what&apos;s wrong, where to visit, and when you&apos;re available — we&apos;ll route your request to the right team.
+              Name, company, and number are required. Add issue, device, address, and visit details when you have them.
             </p>
           </div>
         </div>
@@ -257,15 +282,53 @@ export default function CreateTicket() {
             <form onSubmit={handleSubmit} className="space-y-8">
               <FormSection
                 eyebrow="Step 1"
+                title="Customer details"
+                subtitle="Only these fields are required to create a ticket."
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-800 mb-2">Name *</label>
+                    <input
+                      value={formData.customer_name}
+                      onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                      required
+                      className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white text-slate-900 shadow-inner focus:ring-2 focus:ring-teal-500/40 focus:border-teal-400 transition"
+                      placeholder="Customer name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-800 mb-2">Number *</label>
+                    <input
+                      value={formData.customer_phone}
+                      onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+                      required
+                      className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white text-slate-900 shadow-inner focus:ring-2 focus:ring-teal-500/40 focus:border-teal-400 transition"
+                      placeholder="Phone number"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-semibold text-slate-800 mb-2">Company *</label>
+                    <input
+                      value={formData.customer_company}
+                      onChange={(e) => setFormData({ ...formData, customer_company: e.target.value })}
+                      required
+                      className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white text-slate-900 shadow-inner focus:ring-2 focus:ring-teal-500/40 focus:border-teal-400 transition"
+                      placeholder="Company name"
+                    />
+                  </div>
+                </div>
+              </FormSection>
+
+              <FormSection
+                eyebrow="Step 2"
                 title="Device"
-                subtitle="Choose the product that needs service. Only devices registered to your account appear here."
+                subtitle="Optional: choose the product that needs service. Only devices registered to your account appear here."
               >
                 <div>
-                  <label className="block text-sm font-semibold text-slate-800 mb-2">Registered device *</label>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Registered device</label>
                   <select
                     value={deviceId}
                     onChange={(e) => setDeviceId(e.target.value)}
-                    required
                     className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white text-slate-900 shadow-inner focus:ring-2 focus:ring-teal-500/40 focus:border-teal-400 transition"
                   >
                     <option value="">Select a device</option>
@@ -277,7 +340,7 @@ export default function CreateTicket() {
                   </select>
                   {devices.length === 0 && (
                     <p className="mt-3 text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                      No devices found. Register a device first, then return here to create a ticket.
+                      No registered devices found. You can still create the ticket and add device details later.
                     </p>
                   )}
                   {deviceId && selectedDeviceLabel && (
@@ -289,17 +352,15 @@ export default function CreateTicket() {
               </FormSection>
 
               <FormSection
-                eyebrow="Step 2"
+                eyebrow="Step 3"
                 title="Describe the issue"
-                subtitle="Clear details help us assign the right engineer and parts."
+                subtitle="Optional: clear details help us assign the right engineer and parts."
               >
                 <div>
-                  <label className="block text-sm font-semibold text-slate-800 mb-2">What&apos;s happening? *</label>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">What&apos;s happening?</label>
                   <textarea
                     value={formData.issue_description}
                     onChange={(e) => setFormData({ ...formData, issue_description: e.target.value })}
-                    onBlur={getAITriage}
-                    required
                     rows={6}
                     className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500/40 focus:border-teal-400 transition resize-y min-h-[140px]"
                     placeholder="Example: Washing machine stops mid-cycle with an error code, water not draining…"
@@ -367,7 +428,7 @@ export default function CreateTicket() {
               </FormSection>
 
               <FormSection
-                eyebrow="Step 3"
+                eyebrow="Step 4"
                 title="Language & evidence"
                 subtitle="Optional links to photos or short videos help diagnose faster."
               >
@@ -431,16 +492,15 @@ export default function CreateTicket() {
               </FormSection>
 
               <FormSection
-                eyebrow="Step 4"
+                eyebrow="Step 5"
                 title="Service location"
-                subtitle="Full address where the engineer should visit. You can pin from the address or use GPS."
+                subtitle="Optional: full address where the engineer should visit. You can pin from the address or use GPS."
               >
                 <div>
-                  <label className="block text-sm font-semibold text-slate-800 mb-2">Address *</label>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Address</label>
                   <textarea
                     value={formData.service_address}
                     onChange={(e) => setFormData({ ...formData, service_address: e.target.value })}
-                    required
                     rows={4}
                     className="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500/40"
                     placeholder="House / flat, street, landmark, city, PIN…"
@@ -510,7 +570,7 @@ export default function CreateTicket() {
               </FormSection>
 
               <FormSection
-                eyebrow="Step 5"
+                eyebrow="Step 6"
                 title="Preferred visit times"
                 subtitle="Tap the time bands that work for you — pick as many as you need across the week."
               >
@@ -518,7 +578,7 @@ export default function CreateTicket() {
               </FormSection>
 
               <FormSection
-                eyebrow="Step 6"
+                eyebrow="Step 7"
                 title="Contact & priority"
                 subtitle="How we should reach you, and how urgent this visit is."
               >

@@ -29,6 +29,9 @@ export default function SupportAgentCreateTicket() {
   const [devices, setDevices] = useState([])
   const [deviceId, setDeviceId] = useState('')
   const [formData, setFormData] = useState({
+    customer_name: '',
+    customer_company: '',
+    customer_phone: '',
     issue_description: '',
     service_address: '',
     priority: 'medium',
@@ -45,6 +48,23 @@ export default function SupportAgentCreateTicket() {
   })
   const [preferredTimeSlots, setPreferredTimeSlots] = useState([])
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetch(`${getApiBase()}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((profile) => {
+        if (!profile) return
+        setFormData((prev) => ({
+          ...prev,
+          customer_company: prev.customer_company || profile.organization_name || '',
+        }))
+      })
+      .catch(() => null)
+  }, [])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -78,14 +98,20 @@ export default function SupportAgentCreateTicket() {
       })
   }, [customerId])
 
+  useEffect(() => {
+    const selected = customers.find((c) => String(c.id) === String(customerId))
+    if (!selected) return
+    setFormData((prev) => ({
+      ...prev,
+      customer_name: selected.full_name || prev.customer_name,
+      customer_phone: selected.phone || prev.customer_phone,
+    }))
+  }, [customerId, customers])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!customerId) {
-      alert('Select a customer.')
-      return
-    }
-    if (!deviceId) {
-      alert('Select a device registered to that customer.')
+    if (!formData.customer_name.trim() || !formData.customer_company.trim() || !formData.customer_phone.trim()) {
+      alert('Please enter customer name, company, and number.')
       return
     }
     const token = localStorage.getItem('token')
@@ -102,9 +128,12 @@ export default function SupportAgentCreateTicket() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          customer_id: parseInt(customerId, 10),
+          customer_id: customerId ? parseInt(customerId, 10) : null,
+          customer_name: formData.customer_name.trim(),
+          customer_company: formData.customer_company.trim(),
+          customer_phone: formData.customer_phone.trim(),
           issue_description: formData.issue_description,
-          device_id: parseInt(deviceId, 10),
+          device_id: deviceId ? parseInt(deviceId, 10) : null,
           service_address: formData.service_address,
           priority: formData.priority,
           issue_language: formData.issue_language,
@@ -140,23 +169,61 @@ export default function SupportAgentCreateTicket() {
           </Link>
           <h1 className="text-3xl font-bold text-slate-900 mt-4">Create ticket for customer</h1>
           <p className="text-slate-600 mt-2">
-            Same payload as the customer portal: device, issue, address, visit preferences, and contact options. The ticket is
-            attributed to the selected customer so city / state / country routing matches their profile.
+            Name, company, and number are required. Device, issue, address, visit preferences, and contact options can be
+            added when available.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <FormSection
             eyebrow="Step 1"
+            title="Customer details"
+            subtitle="Only name, company, and number are required."
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Name *</label>
+                <input
+                  value={formData.customer_name}
+                  onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                  required
+                  className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white"
+                  placeholder="Customer name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Number *</label>
+                <input
+                  value={formData.customer_phone}
+                  onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+                  required
+                  className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white"
+                  placeholder="Phone number"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Company *</label>
+                <input
+                  value={formData.customer_company}
+                  onChange={(e) => setFormData({ ...formData, customer_company: e.target.value })}
+                  required
+                  className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white"
+                  placeholder="Company name"
+                />
+              </div>
+            </div>
+          </FormSection>
+
+          <FormSection
+            eyebrow="Step 2"
             title="Customer & device"
-            subtitle="Only customers in your organization are listed. Devices load for the selected customer."
+            subtitle="Optional: select an existing customer or registered device when available."
           >
             <div>
-              <label className="block text-sm font-semibold text-slate-800 mb-2">Customer *</label>
+              <label className="block text-sm font-semibold text-slate-800 mb-2">Customer</label>
               <select
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
-                required
                 className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white"
               >
                 <option value="">Select customer</option>
@@ -171,11 +238,10 @@ export default function SupportAgentCreateTicket() {
               )}
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-800 mb-2">Device *</label>
+              <label className="block text-sm font-semibold text-slate-800 mb-2">Device</label>
               <select
                 value={deviceId}
                 onChange={(e) => setDeviceId(e.target.value)}
-                required
                 disabled={!customerId}
                 className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white disabled:opacity-50"
               >
@@ -192,18 +258,17 @@ export default function SupportAgentCreateTicket() {
             </div>
           </FormSection>
 
-          <FormSection eyebrow="Step 2" title="Issue" subtitle="Describe the problem clearly for triage and routing.">
+          <FormSection eyebrow="Step 3" title="Issue" subtitle="Optional: describe the problem clearly for triage and routing.">
             <textarea
               value={formData.issue_description}
               onChange={(e) => setFormData({ ...formData, issue_description: e.target.value })}
-              required
               rows={6}
               className="w-full px-4 py-3.5 rounded-xl border border-slate-200"
               placeholder="Symptoms, error codes, when it started…"
             />
           </FormSection>
 
-          <FormSection eyebrow="Step 3" title="Language & evidence" subtitle="Optional media URLs.">
+          <FormSection eyebrow="Step 4" title="Language & evidence" subtitle="Optional media URLs.">
             <div>
               <label className="block text-sm font-semibold text-slate-800 mb-2">Preferred language</label>
               <select
@@ -259,11 +324,10 @@ export default function SupportAgentCreateTicket() {
             </div>
           </FormSection>
 
-          <FormSection eyebrow="Step 4" title="Service location" subtitle="Where the engineer should visit.">
+          <FormSection eyebrow="Step 5" title="Service location" subtitle="Optional: where the engineer should visit.">
             <textarea
               value={formData.service_address}
               onChange={(e) => setFormData({ ...formData, service_address: e.target.value })}
-              required
               rows={4}
               className="w-full px-4 py-3.5 rounded-xl border border-slate-200"
               placeholder="Address with landmark and PIN"
@@ -300,11 +364,11 @@ export default function SupportAgentCreateTicket() {
             </div>
           </FormSection>
 
-          <FormSection eyebrow="Step 5" title="Preferred visit times" subtitle="Customer availability windows.">
+          <FormSection eyebrow="Step 6" title="Preferred visit times" subtitle="Customer availability windows.">
             <PreferredVisitSlotPicker value={preferredTimeSlots} onChange={setPreferredTimeSlots} />
           </FormSection>
 
-          <FormSection eyebrow="Step 6" title="Contact & priority" subtitle="How to reach the customer.">
+          <FormSection eyebrow="Step 7" title="Contact & priority" subtitle="How to reach the customer.">
             <div className="flex flex-wrap gap-3">
               {['call', 'whatsapp', 'sms'].map((pref) => (
                 <label
