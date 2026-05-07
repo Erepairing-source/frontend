@@ -750,6 +750,25 @@ export default function EngineerTicketDetail({ user }) {
                     <strong>Warranty:</strong> {ticket.warranty_status.replace('_', ' ')} {ticket.is_chargeable ? '(chargeable)' : '(not chargeable)'}
                   </div>
                 )}
+                {(ticket?.otp_start_verified_at ||
+                  ticket?.otp_complete_verified_at ||
+                  ticket?.customer_otp_verified) && (
+                  <div className="mt-2 rounded-md bg-slate-50 border border-slate-100 px-2 py-1.5 text-xs text-slate-600 space-y-0.5">
+                    {ticket.otp_start_verified_at && (
+                      <div>
+                        Start-work OTP verified: {new Date(ticket.otp_start_verified_at).toLocaleString()}
+                      </div>
+                    )}
+                    {(ticket.otp_complete_verified_at || ticket.customer_otp_verified) && (
+                      <div>
+                        Completion OTP verified:{' '}
+                        {ticket.otp_complete_verified_at
+                          ? new Date(ticket.otp_complete_verified_at).toLocaleString()
+                          : '(flag set)'}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {ticket.oem_instructions && (
                   <div className="mt-1 text-amber-700">
                     <strong>OEM Instructions:</strong> {ticket.oem_instructions}

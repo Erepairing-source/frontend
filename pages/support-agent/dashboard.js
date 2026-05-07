@@ -4,13 +4,17 @@ import { useRouter } from 'next/router'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
-import { Plus, RefreshCw } from 'lucide-react'
+import { Plus, RefreshCw, Search } from 'lucide-react'
 import { getApiBase } from '@lib/api'
 
 export default function SupportAgentDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [tickets, setTickets] = useState([])
+  const [lookupQ, setLookupQ] = useState('')
+  const [lookupResult, setLookupResult] = useState(null)
+  const [lookupLoading, setLookupLoading] = useState(false)
+  const [lookupError, setLookupError] = useState('')
 
   const load = async () => {
     const token = localStorage.getItem('token')
@@ -29,6 +33,35 @@ export default function SupportAgentDashboard() {
       setTickets([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const runLookup = async () => {
+    const raw = lookupQ.trim()
+    if (!raw) return
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+      return
+    }
+    setLookupLoading(true)
+    setLookupError('')
+    setLookupResult(null)
+    try {
+      const res = await fetch(
+        `${getApiBase()}/tickets/service-lookup?${new URLSearchParams({ q: raw }).toString()}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        setLookupError(typeof data?.detail === 'string' ? data.detail : JSON.stringify(data?.detail || data) || 'Lookup failed.')
+        return
+      }
+      setLookupResult(data)
+    } catch {
+      setLookupError('Network error.')
+    } finally {
+      setLookupLoading(false)
     }
   }
 
@@ -55,8 +88,8 @@ export default function SupportAgentDashboard() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Support desk</h1>
             <p className="text-slate-600 mt-1">
-              Raise tickets for customers in your organization. There is no per-user ticket cap — routing uses the customer’s
-              location so city, state, and country admins see work in hierarchy.
+              Device-first ticketing (serial / Service Tag) with human-readable references (ER-*). Search by ticket id,
+              pincode, serial, or customer name; create tickets anchored to registered devices.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -101,6 +134,133 @@ export default function SupportAgentDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="mb-8 border-teal-200/60 bg-white/90">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Service lookup</CardTitle>
+            <p className="text-sm text-slate-600 font-normal">
+              Same bar for ticket ids (ER-…), postal codes (e.g. 400001), device serial numbers, or customer names.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={lookupQ}
+                onChange={(e) => setLookupQ(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), runLookup())}
+                placeholder="ER-20260507-001  ·  8J3FN2  ·  400001  ·  Priya Sharma"
+                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-sm"
+              />
+              <Button type="button" onClick={runLookup} disabled={lookupLoading || !lookupQ.trim()} className="shrink-0 bg-teal-600 hover:bg-teal-700">
+                <Search className="w-4 h-4 mr-2" />
+                {lookupLoading ? 'Searching…' : 'Search'}
+              </Button>
+            </div>
+            {lookupError && <p className="text-sm text-red-700">{lookupError}</p>}
+            {lookupResult && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm space-y-3">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Interpreted as: {(lookupResult.interpreted_as || []).join(', ') || 'mixed'}
+                </p>
+                {lookupResult.ticket && (
+                  <div>
+                    <p className="font-semibold text-slate-900">Ticket</p>
+                    <button
+                      type="button"
+                      className="text-teal-700 font-mono hover:underline"
+                      onClick={() => router.push(`/tickets/${lookupResult.ticket.id}`)}
+                    >
+                      {lookupResult.ticket.ticket_number}
+                    </button>
+                    <span className="text-slate-600 ml-2">{lookupResult.ticket.status}</span>
+                  </div>
+                )}
+                {lookupResult.device && (
+                  <div>
+                    <p className="font-semibold text-slate-900">Device</p>
+                    <p className="text-slate-700">
+                      {lookupResult.device.brand} {lookupResult.device.model_number} · SN{' '}
+                      <span className="font-mono">{lookupResult.device.serial_number}</span> · Warranty:{' '}
+                      {lookupResult.device.warranty_status}
+                    </p>
+                    {lookupResult.device.customer && (
+                      <p className="text-slate-600 mt-1">
+                        Owner: {lookupResult.device.customer.full_name}
+                        {lookupResult.device.customer.phone ? ` · ${lookupResult.device.customer.phone}` : ''}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-teal-800 border-teal-300"
+                        onClick={() =>
+                          router.push(`/support-agent/create-ticket?serial=${encodeURIComponent(lookupResult.device.serial_number)}`)
+                        }
+                      >
+                        New ticket on this device
+                      </Button>
+                    </div>
+                    {lookupResult.device_ticket_history?.length > 0 && (
+                      <ul className="mt-2 space-y-1 text-xs text-slate-600 border-t border-slate-200 pt-2">
+                        {lookupResult.device_ticket_history.slice(0, 8).map((row) => (
+                          <li key={row.id}>
+                            <button type="button" className="text-teal-700 hover:underline font-mono mr-2" onClick={() => router.push(`/tickets/${row.id}`)}>
+                              {row.ticket_number}
+                            </button>
+                            {row.status}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+                {lookupResult.tickets_by_pincode?.length > 0 && (
+                  <div>
+                    <p className="font-semibold text-slate-900">Tickets in postal area</p>
+                    <ul className="mt-1 space-y-1 max-h-40 overflow-y-auto">
+                      {lookupResult.tickets_by_pincode.slice(0, 15).map((row) => (
+                        <li key={row.id}>
+                          <button type="button" className="text-teal-700 hover:underline font-mono text-xs mr-2" onClick={() => router.push(`/tickets/${row.id}`)}>
+                            {row.ticket_number}
+                          </button>
+                          <span className="text-slate-600">{row.customer_name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {lookupResult.customers?.length > 0 && !(lookupResult.device || lookupResult.ticket || lookupResult.tickets_by_pincode?.length) && (
+                  <div>
+                    <p className="font-semibold text-slate-900">Matching customers</p>
+                    <ul className="mt-1 space-y-1">
+                      {lookupResult.customers.slice(0, 12).map((c) => (
+                        <li key={c.id} className="text-slate-700">
+                          {c.full_name} — {c.email}
+                          {c.address_pincode ? ` · PIN ${c.address_pincode}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {lookupResult.customers?.length > 0 && lookupResult.tickets_by_pincode?.length > 0 && (
+                  <div>
+                    <p className="font-semibold text-slate-900 mt-3">Customers with this PIN</p>
+                    <ul className="mt-1 space-y-1">
+                      {lookupResult.customers.slice(0, 8).map((c) => (
+                        <li key={c.id} className="text-slate-700">
+                          {c.full_name} — {c.phone}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

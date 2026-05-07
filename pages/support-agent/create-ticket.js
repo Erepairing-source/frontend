@@ -28,6 +28,9 @@ export default function SupportAgentCreateTicket() {
   const [customerId, setCustomerId] = useState('')
   const [devices, setDevices] = useState([])
   const [deviceId, setDeviceId] = useState('')
+  const [serialInput, setSerialInput] = useState('')
+  const [serialProfileLoading, setSerialProfileLoading] = useState(false)
+  const [serialProfileMessage, setSerialProfileMessage] = useState('')
   const [formData, setFormData] = useState({
     customer_name: '',
     customer_company: '',
@@ -89,8 +92,13 @@ export default function SupportAgentCreateTicket() {
     })
       .then((res) => (res.ok ? res.json() : []))
       .then((list) => {
-        setDevices(Array.isArray(list) ? list : [])
-        setDeviceId('')
+        const arr = Array.isArray(list) ? list : []
+        setDevices(arr)
+        // Keep selection when serial lookup pre-set device (same customer); clear if device not in new list
+        setDeviceId((prev) => {
+          if (prev && arr.some((d) => String(d.id) === String(prev))) return prev
+          return ''
+        })
       })
       .catch(() => {
         setDevices([])
@@ -108,10 +116,65 @@ export default function SupportAgentCreateTicket() {
     }))
   }, [customerId, customers])
 
+  useEffect(() => {
+    if (!router.isReady) return
+    const s = router.query.serial
+    if (typeof s === 'string' && s.trim()) setSerialInput(s.trim())
+  }, [router.isReady, router.query.serial])
+
+  const loadDeviceProfile = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+      return
+    }
+    const serial = serialInput.trim()
+    if (!serial) {
+      setSerialProfileMessage('Enter a serial number or Service Tag first.')
+      return
+    }
+    setSerialProfileLoading(true)
+    setSerialProfileMessage('')
+    try {
+      const res = await fetch(
+        `${getApiBase()}/devices/service-profile/by-serial?serial=${encodeURIComponent(serial)}&include_ticket_history=true`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      const data = await res.json()
+      if (!res.ok) {
+        const msg = typeof data.detail === 'string' ? data.detail : 'Device not found.'
+        setSerialProfileMessage(msg)
+        return
+      }
+      const dev = data.device
+      const cust = data.customer
+      if (cust?.id) setCustomerId(String(cust.id))
+      if (dev?.id) setDeviceId(String(dev.id))
+      setFormData((prev) => ({
+        ...prev,
+        customer_name: cust?.full_name || prev.customer_name,
+        customer_phone: cust?.phone || prev.customer_phone,
+      }))
+      setSerialProfileMessage(
+        `Linked: ${dev?.brand || ''} ${dev?.model_number || ''} (${dev?.serial_number || ''}) — ${cust?.full_name || ''}`
+      )
+    } catch {
+      setSerialProfileMessage('Network error.')
+    } finally {
+      setSerialProfileLoading(false)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.customer_name.trim() || !formData.customer_company.trim() || !formData.customer_phone.trim()) {
       alert('Please enter customer name, company, and number.')
+      return
+    }
+    if (!deviceId) {
+      alert(
+        'Every support ticket must be tied to a registered device. Use serial lookup (Step 1) or select a device for the customer (Step 3).'
+      )
       return
     }
     const token = localStorage.getItem('token')
@@ -134,6 +197,7 @@ export default function SupportAgentCreateTicket() {
           customer_phone: formData.customer_phone.trim(),
           issue_description: formData.issue_description,
           device_id: deviceId ? parseInt(deviceId, 10) : null,
+          device_serial: serialInput.trim() || undefined,
           service_address: formData.service_address,
           priority: formData.priority,
           issue_language: formData.issue_language,
@@ -168,15 +232,43 @@ export default function SupportAgentCreateTicket() {
             ← Back to support desk
           </Link>
           <h1 className="text-3xl font-bold text-slate-900 mt-4">Create ticket for customer</h1>
-          <p className="text-slate-600 mt-2">
-            Name, company, and number are required. Device, issue, address, visit preferences, and contact options can be
-            added when available.
-          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <FormSection
             eyebrow="Step 1"
+            title="Serial number / Service Tag"
+            subtitle="Primary lookup — finds the asset, warranty state, owner, and past tickets."
+          >
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                value={serialInput}
+                onChange={(e) => setSerialInput(e.target.value)}
+                className="flex-1 px-4 py-3.5 rounded-xl border border-slate-200 bg-white font-mono text-sm"
+                placeholder="e.g. ABC123XYZ or manufacturer serial"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => loadDeviceProfile()}
+                disabled={serialProfileLoading}
+                className="shrink-0 border-teal-400 text-teal-800 hover:bg-teal-50"
+              >
+                {serialProfileLoading ? 'Looking up…' : 'Lookup device'}
+              </Button>
+            </div>
+            {serialProfileMessage && (
+              <p className={`text-sm mt-2 ${serialProfileMessage.startsWith('Linked:') ? 'text-teal-800' : 'text-amber-800'}`}>
+                {serialProfileMessage}
+              </p>
+            )}
+            <p className="text-xs text-slate-500 mt-2">
+              If you do not use lookup, choose the customer and device in Step 3 — a device selection is required before submit.
+            </p>
+          </FormSection>
+
+          <FormSection
+            eyebrow="Step 2"
             title="Customer details"
             subtitle="Only name, company, and number are required."
           >
@@ -214,11 +306,7 @@ export default function SupportAgentCreateTicket() {
             </div>
           </FormSection>
 
-          <FormSection
-            eyebrow="Step 2"
-            title="Customer & device"
-            subtitle="Optional: select an existing customer or registered device when available."
-          >
+          <FormSection eyebrow="Step 3" title="Customer & device">
             <div>
               <label className="block text-sm font-semibold text-slate-800 mb-2">Customer</label>
               <select
@@ -258,7 +346,7 @@ export default function SupportAgentCreateTicket() {
             </div>
           </FormSection>
 
-          <FormSection eyebrow="Step 3" title="Issue" subtitle="Optional: describe the problem clearly for triage and routing.">
+          <FormSection eyebrow="Step 4" title="Issue" subtitle="Optional: describe the problem clearly for triage and routing.">
             <textarea
               value={formData.issue_description}
               onChange={(e) => setFormData({ ...formData, issue_description: e.target.value })}
@@ -268,7 +356,7 @@ export default function SupportAgentCreateTicket() {
             />
           </FormSection>
 
-          <FormSection eyebrow="Step 4" title="Language & evidence" subtitle="Optional media URLs.">
+          <FormSection eyebrow="Step 5" title="Language & evidence" subtitle="Optional media URLs.">
             <div>
               <label className="block text-sm font-semibold text-slate-800 mb-2">Preferred language</label>
               <select
@@ -324,7 +412,7 @@ export default function SupportAgentCreateTicket() {
             </div>
           </FormSection>
 
-          <FormSection eyebrow="Step 5" title="Service location" subtitle="Optional: where the engineer should visit.">
+          <FormSection eyebrow="Step 6" title="Service location" subtitle="Include PIN / postal code for dispatch. Where the engineer should visit.">
             <textarea
               value={formData.service_address}
               onChange={(e) => setFormData({ ...formData, service_address: e.target.value })}
@@ -364,11 +452,11 @@ export default function SupportAgentCreateTicket() {
             </div>
           </FormSection>
 
-          <FormSection eyebrow="Step 6" title="Preferred visit times" subtitle="Customer availability windows.">
+          <FormSection eyebrow="Step 7" title="Preferred visit times" subtitle="Customer availability windows.">
             <PreferredVisitSlotPicker value={preferredTimeSlots} onChange={setPreferredTimeSlots} />
           </FormSection>
 
-          <FormSection eyebrow="Step 7" title="Contact & priority" subtitle="How to reach the customer.">
+          <FormSection eyebrow="Step 8" title="Contact & priority" subtitle="How to reach the customer.">
             <div className="flex flex-wrap gap-3">
               {['call', 'whatsapp', 'sms'].map((pref) => (
                 <label
