@@ -37,7 +37,8 @@ export default function CreateTicket() {
   const [geoLoading, setGeoLoading] = useState(false)
   const [lastGeocodedAddress, setLastGeocodedAddress] = useState('')
   const [issueAttachments, setIssueAttachments] = useState([])
-  const [attachmentInput, setAttachmentInput] = useState('')
+  const [attachmentFiles, setAttachmentFiles] = useState([])
+  const [uploadingAttachments, setUploadingAttachments] = useState(false)
   const [contactPreferences, setContactPreferences] = useState({
     call: true,
     whatsapp: false,
@@ -171,6 +172,40 @@ export default function CreateTicket() {
       alert('Network error. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const uploadSelectedAttachments = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+      return
+    }
+    if (!attachmentFiles.length) return
+    setUploadingAttachments(true)
+    try {
+      const uploaded = []
+      for (const file of attachmentFiles) {
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch(`${getApiBase()}/tickets/uploads`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          const msg = typeof data.detail === 'string' ? data.detail : 'Upload failed'
+          throw new Error(msg)
+        }
+        if (data.url) uploaded.push(data.url)
+      }
+      setIssueAttachments((prev) => [...prev, ...uploaded])
+      setAttachmentFiles([])
+    } catch (err) {
+      alert(`Attachment upload failed: ${err?.message || 'Unknown error'}`)
+    } finally {
+      setUploadingAttachments(false)
     }
   }
 
@@ -430,7 +465,7 @@ export default function CreateTicket() {
               <FormSection
                 eyebrow="Step 4"
                 title="Language & evidence"
-                subtitle="Optional links to photos or short videos help diagnose faster."
+                subtitle="Upload photos/videos directly to help diagnose faster."
               >
                 <div>
                   <label className="block text-sm font-semibold text-slate-800 mb-2">Preferred language</label>
@@ -448,27 +483,29 @@ export default function CreateTicket() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-800 mb-2">Photo / video URLs</label>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Photos / videos</label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
-                      type="url"
-                      value={attachmentInput}
-                      onChange={(e) => setAttachmentInput(e.target.value)}
+                      type="file"
+                      multiple
+                      accept="image/*,video/*"
+                      onChange={(e) => setAttachmentFiles(Array.from(e.target.files || []))}
                       className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500/40"
-                      placeholder="https://…"
                     />
                     <Button
                       type="button"
-                      onClick={() => {
-                        if (!attachmentInput.trim()) return
-                        setIssueAttachments([...issueAttachments, attachmentInput.trim()])
-                        setAttachmentInput('')
-                      }}
+                      onClick={uploadSelectedAttachments}
+                      disabled={uploadingAttachments || attachmentFiles.length === 0}
                       size="lg"
                     >
-                      Add
+                      {uploadingAttachments ? 'Uploading…' : 'Upload'}
                     </Button>
                   </div>
+                  {attachmentFiles.length > 0 && (
+                    <p className="mt-2 text-xs text-slate-600">
+                      Selected: {attachmentFiles.map((f) => f.name).join(', ')}
+                    </p>
+                  )}
                   {issueAttachments.length > 0 && (
                     <ul className="mt-3 space-y-2">
                       {issueAttachments.map((url, idx) => (
