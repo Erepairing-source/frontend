@@ -353,11 +353,26 @@ export default function RegisterDevice() {
                       <div className="space-y-1 text-sm">
                         <p><strong>Total:</strong> {bulkResults.total}</p>
                         <p className="text-green-700"><strong>Successfully registered:</strong> {bulkResults.successful}</p>
+                        {bulkResults.skipped > 0 && (
+                          <p className="text-amber-700"><strong>Skipped (already exist):</strong> {bulkResults.skipped}</p>
+                        )}
                         {bulkResults.failed > 0 && (
                           <p className="text-red-700"><strong>Failed:</strong> {bulkResults.failed}</p>
                         )}
                       </div>
                     </div>
+                    {bulkResults.skipped_rows && bulkResults.skipped_rows.length > 0 && (
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg max-h-64 overflow-y-auto">
+                        <h4 className="font-bold text-amber-900 mb-2">Skipped devices:</h4>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-amber-800">
+                          {bulkResults.skipped_rows.map((item, idx) => (
+                            <li key={idx}>
+                              Row {item.row}: {item.serial_number} — {item.reason}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     {bulkResults.errors && bulkResults.errors.length > 0 && (
                       <div className="p-4 bg-red-50 border border-red-200 rounded-lg max-h-64 overflow-y-auto">
                         <h4 className="font-bold text-red-900 mb-2">Errors:</h4>

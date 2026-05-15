@@ -248,10 +248,24 @@ export default function SupportAgentBulkRegister() {
               <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-2 text-sm">
                 <p className="font-semibold text-green-900">{deviceResults.message || 'Device upload complete'}</p>
                 <p>
-                  Successful: {deviceResults.successful} · Failed: {deviceResults.failed}
+                  Successful: {deviceResults.successful}
+                  {deviceResults.skipped > 0 && <> · Skipped (already exist): {deviceResults.skipped}</>}
+                  {deviceResults.failed > 0 && <> · Failed: {deviceResults.failed}</>}
                 </p>
+                {deviceResults.skipped_rows?.length > 0 && (
+                  <div className="text-amber-800">
+                    <p className="font-medium mb-1">Skipped devices:</p>
+                    <ul className="list-disc list-inside max-h-32 overflow-y-auto">
+                      {deviceResults.skipped_rows.slice(0, 8).map((item, i) => (
+                        <li key={i}>
+                          Row {item.row}: {item.serial_number} — {item.reason}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {deviceResults.errors?.length > 0 && (
-                  <ul className="list-disc list-inside text-amber-800 max-h-32 overflow-y-auto">
+                  <ul className="list-disc list-inside text-red-800 max-h-32 overflow-y-auto">
                     {deviceResults.errors.slice(0, 8).map((msg, i) => (
                       <li key={i}>{msg}</li>
                     ))}
