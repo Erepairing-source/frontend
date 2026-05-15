@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
+import { PasswordInput } from '../components/ui/password-input'
 import { Label } from '../components/ui/label'
 import { Card } from '../components/ui/card'
 import Logo from '../components/Logo'
@@ -214,9 +215,9 @@ export default function SetPassword() {
           )}
           <div className="space-y-2">
             <Label htmlFor="password">New password *</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Minimum 8 characters"
@@ -226,9 +227,9 @@ export default function SetPassword() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm new password *</Label>
-            <Input
+            <PasswordInput
               id="confirmPassword"
-              type="password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Re-enter password"

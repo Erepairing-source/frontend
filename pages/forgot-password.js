@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
+import { PasswordInput } from '../components/ui/password-input'
 import { Label } from '../components/ui/label'
 import { Card } from '../components/ui/card'
 import Logo from '../components/Logo'
@@ -205,9 +206,8 @@ export default function ForgotPasswordPage() {
               </div>
               <div>
                 <Label htmlFor="fp-new">New password</Label>
-                <Input
+                <PasswordInput
                   id="fp-new"
-                  type="password"
                   autoComplete="new-password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -218,9 +218,8 @@ export default function ForgotPasswordPage() {
               </div>
               <div>
                 <Label htmlFor="fp-confirm">Confirm password</Label>
-                <Input
+                <PasswordInput
                   id="fp-confirm"
-                  type="password"
                   autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

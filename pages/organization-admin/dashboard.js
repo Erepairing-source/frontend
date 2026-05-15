@@ -56,6 +56,7 @@ function buildProductSpecificationsFromForm(productForm) {
   return specs
 }
 import ComingSoon from '../../components/ComingSoon'
+import RazorpayAutopayModal from '../../components/RazorpayAutopayModal'
 
 /** Days from today (UTC date) until subscription end; negative if expired. */
 function subscriptionDaysRemaining(sub) {
@@ -72,7 +73,18 @@ function subscriptionDaysRemaining(sub) {
 const SUBSCRIPTION_WARNING_DAYS = 10
 
 const SERVICE_POLICY_TYPES = ['warranty', 'chargeable', 'parts', 'pricing', 'replacement', 'other']
-const SERVICE_POLICY_PRODUCT_CATEGORIES = ['ac', 'refrigerator', 'washing_machine', 'tv']
+const PRODUCT_CATALOG_CATEGORIES = [
+  { value: 'ac', label: 'AC' },
+  { value: 'refrigerator', label: 'Refrigerator' },
+  { value: 'washing_machine', label: 'Washing Machine' },
+  { value: 'tv', label: 'TV' },
+  { value: 'microwave', label: 'Microwave' },
+  { value: 'air_purifier', label: 'Air Purifier' },
+  { value: 'water_purifier', label: 'Water Purifier' },
+  { value: 'laptop', label: 'Laptop' },
+  { value: 'computer', label: 'Computer' },
+  { value: 'other', label: 'Other' },
+]
 
 /** Normalize API `rules` (object or JSON string) for the form. */
 function parseServicePolicyRules(raw) {
@@ -375,6 +387,7 @@ export default function OrganizationAdminDashboard() {
   const [billingPeriod, setBillingPeriod] = useState('monthly')
   const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false)
   const [upgradeSuccessData, setUpgradeSuccessData] = useState(null)
+  const [showAutopayModal, setShowAutopayModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [editingSLA, setEditingSLA] = useState(null)
   const [editingServicePolicy, setEditingServicePolicy] = useState(null)
@@ -2368,6 +2381,9 @@ export default function OrganizationAdminDashboard() {
         setShowUpgradePlanModal(false)
         setSelectedUpgradePlan(null)
         setShowUpgradeSuccess(true)
+        if (data.requires_autopay_setup) {
+          setShowAutopayModal(true)
+        }
         loadDashboardData()
       } else {
         const error = await response.json()
@@ -2758,6 +2774,13 @@ export default function OrganizationAdminDashboard() {
       alert('Error unlinking part')
     }
   }
+
+  useEffect(() => {
+    const sub = dashboardData?.subscription
+    if (sub?.requires_autopay_setup && sub?.configured) {
+      setShowAutopayModal(true)
+    }
+  }, [dashboardData?.subscription?.requires_autopay_setup])
 
   const isOEM = dashboardData?.organization?.org_type === 'oem'
   const subDays = subscriptionDaysRemaining(dashboardData?.subscription)
@@ -4080,7 +4103,10 @@ export default function OrganizationAdminDashboard() {
                   Bulk add customers (Excel)
                 </CardTitle>
                 <p className="text-sm text-gray-600 mt-1">
-                  Upload an Excel file with columns: full_name, email, phone. Passwords are generated and sent to each customer&apos;s email.
+                  Same fields as <strong>Add User</strong> for customers. Required: full_name, email, phone.
+                  Optional: password (blank = set-password email), country (country_code or country_id),
+                  state (state_name, state_code, or state_id), city (city_name or city_id).
+                  Download the template for column names and a sample row.
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -4134,7 +4160,7 @@ export default function OrganizationAdminDashboard() {
                         onChange={(e) => setBulkCustomerSendEmail(e.target.checked)}
                       />
                       <Label htmlFor="bulk-customer-send-email" className="cursor-pointer">
-                        Send email and password to each customer&apos;s Gmail / email
+                        Email each customer (set-password link if password column is blank, otherwise login password)
                       </Label>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -4933,7 +4959,7 @@ export default function OrganizationAdminDashboard() {
                           </p>
                           <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
                             <li><strong>product_name</strong> (required) - Product name e.g., &quot;Split AC 1.5T&quot;</li>
-                            <li><strong>category</strong> (required) - ac, refrigerator, washing_machine, tv, microwave, air_purifier, water_purifier, other</li>
+                            <li><strong>category</strong> (required) - ac, refrigerator, washing_machine, tv, microwave, air_purifier, water_purifier, laptop, computer, other</li>
                             <li><strong>brand</strong> (optional) - Brand name</li>
                             <li><strong>description</strong> (optional) - Product description</li>
                             <li><strong>default_warranty_months</strong> (optional) - Default warranty in months</li>
@@ -4988,14 +5014,11 @@ export default function OrganizationAdminDashboard() {
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ac">AC</SelectItem>
-                        <SelectItem value="refrigerator">Refrigerator</SelectItem>
-                        <SelectItem value="washing_machine">Washing Machine</SelectItem>
-                        <SelectItem value="tv">TV</SelectItem>
-                        <SelectItem value="microwave">Microwave</SelectItem>
-                        <SelectItem value="air_purifier">Air Purifier</SelectItem>
-                        <SelectItem value="water_purifier">Water Purifier</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        {PRODUCT_CATALOG_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -5245,10 +5268,11 @@ export default function OrganizationAdminDashboard() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Products</SelectItem>
-                      <SelectItem value="ac">AC</SelectItem>
-                      <SelectItem value="refrigerator">Refrigerator</SelectItem>
-                      <SelectItem value="washing_machine">Washing Machine</SelectItem>
-                      <SelectItem value="tv">TV</SelectItem>
+                      {PRODUCT_CATALOG_CATEGORIES.filter((c) => c.value !== 'other').map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -6982,13 +7006,15 @@ export default function OrganizationAdminDashboard() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Products</SelectItem>
-                      <SelectItem value="ac">AC</SelectItem>
-                      <SelectItem value="refrigerator">Refrigerator</SelectItem>
-                      <SelectItem value="washing_machine">Washing Machine</SelectItem>
-                      <SelectItem value="tv">TV</SelectItem>
+                      {PRODUCT_CATALOG_CATEGORIES.filter((c) => c.value !== 'other').map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
                       {(() => {
                         const pc = servicePolicyForm.product_category || ''
-                        if (pc && !SERVICE_POLICY_PRODUCT_CATEGORIES.includes(pc)) {
+                        const known = PRODUCT_CATALOG_CATEGORIES.map((c) => c.value)
+                        if (pc && !known.includes(pc)) {
                           return <SelectItem value={pc}>{pc} (custom)</SelectItem>
                         }
                         return null
@@ -7384,6 +7410,19 @@ export default function OrganizationAdminDashboard() {
           </div>
         )}
       </div>
+
+      <RazorpayAutopayModal
+        open={showAutopayModal}
+        onClose={() => setShowAutopayModal(false)}
+        onSuccess={() => {
+          setShowAutopayModal(false)
+          loadDashboardData()
+        }}
+        billingIntervalMonths={dashboardData?.subscription?.billing_interval_months || 6}
+        nextChargeInr={dashboardData?.subscription?.next_charge_amount_inr}
+        planName={dashboardData?.subscription?.plan_name}
+        dismissible
+      />
     </div>
   )
 }

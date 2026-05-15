@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
+import { PasswordInput } from '../components/ui/password-input'
 import { Label } from '../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Textarea } from '../components/ui/textarea'
@@ -480,11 +481,12 @@ export default function GetStarted() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="admin_password">Password *</Label>
-                    <Input
+                    <PasswordInput
                       id="admin_password"
-                      type="password"
+                      name="admin_password"
                       value={formData.admin_password}
                       onChange={handleInputChange}
+                      autoComplete="new-password"
                       placeholder="Minimum 8 characters"
                       required
                     />
@@ -492,11 +494,12 @@ export default function GetStarted() {
                   
                   <div className="space-y-2">
                     <Label htmlFor="admin_confirm_password">Confirm Password *</Label>
-                    <Input
+                    <PasswordInput
                       id="admin_confirm_password"
-                      type="password"
+                      name="admin_confirm_password"
                       value={formData.admin_confirm_password}
                       onChange={handleInputChange}
+                      autoComplete="new-password"
                       placeholder="Re-enter password"
                       required
                     />

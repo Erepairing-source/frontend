@@ -46,6 +46,8 @@ export default function RegisterDevice() {
     'Microwave',
     'Water Purifier',
     'Air Purifier',
+    'Laptop',
+    'Computer',
     'Geyser',
     'Other'
   ]

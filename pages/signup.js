@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
+import { PasswordInput } from '../components/ui/password-input'
 import { Label } from '../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Textarea } from '../components/ui/textarea'
@@ -253,11 +254,12 @@ export default function Signup({ user, setUser }) {
             window.location.reload()
           }
         } else if (data.password_set_via_email) {
-          // Signup without password: set-password link sent by email
           alert(data.message || 'Check your email to set your password. The link is valid only once and expires after use.')
+          if (data.requires_autopay_setup) {
+            alert('After setting your password and logging in, you will be prompted to add card/UPI for plan autopay.')
+          }
           router.push('/login')
         } else {
-          // Signup with password: session created but email must be verified first
           localStorage.setItem('token', data.access_token)
           localStorage.setItem('userRole', data.user.role)
           localStorage.setItem('userId', data.user.id)
@@ -265,6 +267,14 @@ export default function Signup({ user, setUser }) {
 
           if (setUser && data.user) {
             setUser(data.user)
+          }
+
+          if (data.requires_autopay_setup) {
+            alert(
+              'Registration complete. Next, save your card or UPI for autopay (first charge after 6 months).'
+            )
+            router.push('/signup/autopay')
+            return
           }
 
           alert(
@@ -549,22 +559,24 @@ export default function Signup({ user, setUser }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="admin_password">Password (optional)</Label>
-                    <Input
+                    <PasswordInput
                       id="admin_password"
-                      type="password"
+                      name="admin_password"
                       value={formData.admin_password}
                       onChange={handleInputChange}
+                      autoComplete="new-password"
                       placeholder="Leave blank to receive set-password link by email"
                     />
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="admin_confirm_password">Confirm Password</Label>
-                    <Input
+                    <PasswordInput
                       id="admin_confirm_password"
-                      type="password"
+                      name="admin_confirm_password"
                       value={formData.admin_confirm_password}
                       onChange={handleInputChange}
+                      autoComplete="new-password"
                       placeholder="Re-enter if you set a password"
                     />
                   </div>
@@ -671,7 +683,8 @@ export default function Signup({ user, setUser }) {
                 )}
               </div>
               <p className="text-sm text-gray-500 text-center mb-6">
-                Displayed plan prices are exclusive of taxes. +18% GST extra.
+                Displayed plan prices are exclusive of taxes. +18% GST extra. After signup you will add card or UPI
+                via Razorpay; the first plan charge is after 6 months, then every 6 months on the same date.
               </p>
 
               <div className="flex justify-between mt-8">

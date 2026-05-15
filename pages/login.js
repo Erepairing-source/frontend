@@ -7,6 +7,7 @@ import Card from '../components/Card'
 import Logo from '../components/Logo'
 import { getApiBase } from '@lib/api'
 import { getDashboardPathForRole } from '@lib/roleDashboard'
+import { PasswordInput } from '../components/ui/password-input'
 
 export default function Login({ setUser }) {
   const [email, setEmail] = useState('')
@@ -110,12 +111,12 @@ export default function Login({ setUser }) {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Password
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  autoComplete="current-password"
+                  className="h-auto py-3 border-gray-300 rounded-lg"
                   placeholder="Enter your password"
                 />
               </div>

@@ -60,7 +60,7 @@ export default function SupportAgentCreateTicket() {
     product_category: '',
     brand: '',
   })
-  const defaultCategories = ['ac', 'washing_machine', 'refrigerator', 'tv', 'microwave', 'water_purifier', 'air_purifier', 'geyser', 'other']
+  const defaultCategories = ['ac', 'washing_machine', 'refrigerator', 'tv', 'microwave', 'water_purifier', 'air_purifier', 'laptop', 'computer', 'geyser', 'other']
   const defaultBrands = ['Samsung', 'LG', 'Whirlpool', 'Daikin', 'Voltas', 'Panasonic', 'Hitachi', 'Blue Star', 'Godrej', 'Haier', 'Other']
 
   const categoryOptions = Array.from(

@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
-import { Plus, RefreshCw, Search } from 'lucide-react'
+import { Plus, RefreshCw, Search, FileSpreadsheet } from 'lucide-react'
 import { getApiBase } from '@lib/api'
 
 export default function SupportAgentDashboard() {
@@ -97,6 +97,12 @@ export default function SupportAgentDashboard() {
               <RefreshCw className="w-4 h-4 mr-1" />
               Refresh
             </Button>
+            <Link href="/support-agent/bulk-register">
+              <Button size="sm" variant="outline">
+                <FileSpreadsheet className="w-4 h-4 mr-1" />
+                Bulk register
+              </Button>
+            </Link>
             <Link href="/support-agent/create-ticket">
               <Button size="sm" className="bg-teal-600 hover:bg-teal-700">
                 <Plus className="w-4 h-4 mr-1" />
@@ -128,8 +134,11 @@ export default function SupportAgentDashboard() {
               <CardTitle className="text-sm font-medium text-slate-500">Quick link</CardTitle>
             </CardHeader>
             <CardContent>
-              <Link href="/support-agent/create-ticket" className="text-teal-700 font-medium hover:underline">
+              <Link href="/support-agent/create-ticket" className="text-teal-700 font-medium hover:underline block">
                 Create on behalf of customer →
+              </Link>
+              <Link href="/support-agent/bulk-register" className="text-teal-700 font-medium hover:underline block mt-1">
+                Bulk customers & devices →
               </Link>
             </CardContent>
           </Card>
