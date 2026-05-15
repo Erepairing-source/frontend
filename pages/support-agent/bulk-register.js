@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { ArrowLeft, FileSpreadsheet, Upload } from 'lucide-react'
+import { ArrowLeft, FileSpreadsheet, Search, Upload, User, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Label } from '../../components/ui/label'
+import { Input } from '../../components/ui/input'
 import { getApiBase } from '@lib/api'
 
 export default function SupportAgentBulkRegister() {
@@ -14,6 +15,12 @@ export default function SupportAgentBulkRegister() {
   const [customerSendEmail, setCustomerSendEmail] = useState(true)
   const [customerLoading, setCustomerLoading] = useState(false)
   const [customerResults, setCustomerResults] = useState(null)
+
+  const [customers, setCustomers] = useState([])
+  const [customersLoading, setCustomersLoading] = useState(true)
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [showCustomerList, setShowCustomerList] = useState(false)
 
   const [deviceFile, setDeviceFile] = useState(null)
   const [deviceLoading, setDeviceLoading] = useState(false)
@@ -28,6 +35,28 @@ export default function SupportAgentBulkRegister() {
     return { Authorization: `Bearer ${token}` }
   }
 
+  useEffect(() => {
+    const headers = authHeaders()
+    if (!headers) return
+    setCustomersLoading(true)
+    fetch(`${getApiBase()}/users/?role=customer`, { headers })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((list) => setCustomers(Array.isArray(list) ? list : []))
+      .catch(() => setCustomers([]))
+      .finally(() => setCustomersLoading(false))
+  }, [])
+
+  const filteredCustomers = useMemo(() => {
+    const q = customerSearch.trim().toLowerCase()
+    if (!q) return customers.slice(0, 25)
+    return customers
+      .filter((c) => {
+        const hay = `${c.full_name || ''} ${c.email || ''} ${c.phone || ''}`.toLowerCase()
+        return hay.includes(q)
+      })
+      .slice(0, 25)
+  }, [customers, customerSearch])
+
   const onCustomerFile = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -39,6 +68,22 @@ export default function SupportAgentBulkRegister() {
     const file = e.target.files?.[0]
     if (!file) return
     setDeviceFile(file)
+    setDeviceResults(null)
+  }
+
+  const selectCustomer = (customer) => {
+    setSelectedCustomer(customer)
+    setCustomerSearch('')
+    setShowCustomerList(false)
+    setDeviceFile(null)
+    setDeviceResults(null)
+    const input = document.getElementById('sa-bulk-device-file')
+    if (input) input.value = ''
+  }
+
+  const clearSelectedCustomer = () => {
+    setSelectedCustomer(null)
+    setDeviceFile(null)
     setDeviceResults(null)
   }
 
@@ -65,10 +110,17 @@ export default function SupportAgentBulkRegister() {
   }
 
   const downloadDeviceTemplate = async () => {
+    if (!selectedCustomer) {
+      alert('Select a customer first')
+      return
+    }
     const headers = authHeaders()
     if (!headers) return
     try {
-      const res = await fetch(`${getApiBase()}/devices/bulk-register-template`, { headers })
+      const res = await fetch(
+        `${getApiBase()}/devices/bulk-register-template?customer_id=${selectedCustomer.id}`,
+        { headers }
+      )
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         alert(data.detail || 'Failed to download template')
@@ -78,7 +130,7 @@ export default function SupportAgentBulkRegister() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'bulk_device_registration_template.xlsx'
+      a.download = `bulk_devices_${selectedCustomer.id}.xlsx`
       a.click()
       window.URL.revokeObjectURL(url)
     } catch {
@@ -110,6 +162,13 @@ export default function SupportAgentBulkRegister() {
         setCustomerFile(null)
         const input = document.getElementById('sa-bulk-customer-file')
         if (input) input.value = ''
+        const refreshHeaders = authHeaders()
+        if (refreshHeaders) {
+          fetch(`${getApiBase()}/users/?role=customer`, { headers: refreshHeaders })
+            .then((r) => (r.ok ? r.json() : []))
+            .then((list) => setCustomers(Array.isArray(list) ? list : []))
+            .catch(() => {})
+        }
       } else {
         alert(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail) || 'Upload failed')
       }
@@ -122,6 +181,10 @@ export default function SupportAgentBulkRegister() {
 
   const submitDevices = async (e) => {
     e.preventDefault()
+    if (!selectedCustomer) {
+      alert('Select a customer first')
+      return
+    }
     if (!deviceFile) {
       alert('Select an Excel file for devices')
       return
@@ -132,6 +195,7 @@ export default function SupportAgentBulkRegister() {
     try {
       const formData = new FormData()
       formData.append('file', deviceFile)
+      formData.append('customer_id', String(selectedCustomer.id))
       const res = await fetch(`${getApiBase()}/devices/bulk-register`, {
         method: 'POST',
         headers,
@@ -163,8 +227,8 @@ export default function SupportAgentBulkRegister() {
 
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Bulk onboarding</h1>
         <p className="text-slate-600 mb-8">
-          Register many customers and their devices for your organization. Use the templates — device rows must include
-          customer email, phone, and full name (or customer_id for existing accounts).
+          Register customers, then select a customer and bulk-upload their devices. All devices in the file are assigned
+          to the customer you pick.
         </p>
 
         <Card className="mb-8">
@@ -239,14 +303,19 @@ export default function SupportAgentBulkRegister() {
               Bulk register customer devices
             </CardTitle>
             <p className="text-sm text-slate-600 font-normal">
-              Device columns plus customer_email, customer_phone, customer_full_name (or customer_id). Existing customers
-              are matched by email/phone; new ones are created automatically.
+              Step 1: Search and select a customer. Step 2: Download the device template. Step 3: Upload the filled Excel
+              file — every row is registered to that customer.
             </p>
           </CardHeader>
           <CardContent>
             {deviceResults ? (
               <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-2 text-sm">
                 <p className="font-semibold text-green-900">{deviceResults.message || 'Device upload complete'}</p>
+                {deviceResults.customer && (
+                  <p className="text-slate-700">
+                    Customer: <strong>{deviceResults.customer.full_name}</strong> ({deviceResults.customer.email})
+                  </p>
+                )}
                 <p>
                   Successful: {deviceResults.successful}
                   {deviceResults.skipped > 0 && <> · Skipped (already exist): {deviceResults.skipped}</>}
@@ -271,12 +340,83 @@ export default function SupportAgentBulkRegister() {
                     ))}
                   </ul>
                 )}
-                <Button variant="outline" size="sm" onClick={() => setDeviceResults(null)}>
-                  Upload another
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDeviceResults(null)
+                    setDeviceFile(null)
+                  }}
+                >
+                  Upload another file
                 </Button>
               </div>
             ) : (
-              <form onSubmit={submitDevices} className="space-y-4">
+              <form onSubmit={submitDevices} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="sa-customer-search">Select customer *</Label>
+                  {selectedCustomer ? (
+                    <div className="flex items-start justify-between gap-2 rounded-lg border border-teal-200 bg-teal-50/80 p-3">
+                      <div className="flex gap-2 min-w-0">
+                        <User className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900 truncate">{selectedCustomer.full_name}</p>
+                          <p className="text-sm text-slate-600 truncate">{selectedCustomer.email}</p>
+                          <p className="text-sm text-slate-500">{selectedCustomer.phone}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={clearSelectedCustomer}
+                        className="text-slate-400 hover:text-slate-700 shrink-0"
+                        aria-label="Clear customer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input
+                        id="sa-customer-search"
+                        type="search"
+                        placeholder={customersLoading ? 'Loading customers…' : 'Type name, email, or phone…'}
+                        value={customerSearch}
+                        onChange={(e) => {
+                          setCustomerSearch(e.target.value)
+                          setShowCustomerList(true)
+                        }}
+                        onFocus={() => setShowCustomerList(true)}
+                        className="pl-9"
+                        disabled={customersLoading}
+                        autoComplete="off"
+                      />
+                      {showCustomerList && !customersLoading && (
+                        <ul className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg text-sm">
+                          {filteredCustomers.length === 0 ? (
+                            <li className="px-3 py-2 text-slate-500">No customers match your search</li>
+                          ) : (
+                            filteredCustomers.map((c) => (
+                              <li key={c.id}>
+                                <button
+                                  type="button"
+                                  className="w-full text-left px-3 py-2 hover:bg-teal-50 border-b border-slate-100 last:border-0"
+                                  onClick={() => selectCustomer(c)}
+                                >
+                                  <span className="font-medium text-slate-900">{c.full_name}</span>
+                                  <span className="block text-slate-500 text-xs">
+                                    {c.email} · {c.phone}
+                                  </span>
+                                </button>
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <Label htmlFor="sa-bulk-device-file">Excel file (.xlsx)</Label>
                   <input
@@ -284,15 +424,28 @@ export default function SupportAgentBulkRegister() {
                     type="file"
                     accept=".xlsx,.xls"
                     onChange={onDeviceFile}
-                    className="mt-1 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border"
+                    disabled={!selectedCustomer}
+                    className="mt-1 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border disabled:opacity-50"
                   />
+                  {!selectedCustomer && (
+                    <p className="text-xs text-amber-700 mt-1">Select a customer before choosing a file.</p>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button type="submit" disabled={deviceLoading || !deviceFile} className="bg-teal-600 hover:bg-teal-700">
+                  <Button
+                    type="submit"
+                    disabled={deviceLoading || !deviceFile || !selectedCustomer}
+                    className="bg-teal-600 hover:bg-teal-700"
+                  >
                     <Upload className="w-4 h-4 mr-1" />
                     {deviceLoading ? 'Uploading…' : 'Upload devices'}
                   </Button>
-                  <Button type="button" variant="outline" onClick={downloadDeviceTemplate}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={downloadDeviceTemplate}
+                    disabled={!selectedCustomer}
+                  >
                     Download template
                   </Button>
                 </div>
@@ -304,5 +457,3 @@ export default function SupportAgentBulkRegister() {
     </div>
   )
 }
-
-
