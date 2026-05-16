@@ -10,7 +10,7 @@ import {
   Ticket, Calendar, MapPin, Clock, User, MessageSquare, 
   CheckCircle2, X, ArrowLeft, AlertCircle, Phone, Mail
 } from 'lucide-react'
-import { getApiBase } from '@lib/api'
+import { getApiBase, resolveMediaUrl } from '@lib/api'
 import ComingSoon from '../../../components/ComingSoon'
 
 export default function CustomerTicketDetail() {
@@ -57,23 +57,49 @@ export default function CustomerTicketDetail() {
   }, [id])
 
   useEffect(() => {
-    if (!ticket?.service_latitude || !ticket?.service_longitude) return
+    if (!ticket) return
     const token = localStorage.getItem('token')
-    const fetchMap = async () => {
+    if (!token) return
+
+    let objectUrl = null
+    const loadMap = async () => {
       try {
+        let lat = ticket.service_latitude
+        let lng = ticket.service_longitude
+        if ((lat == null || lng == null) && ticket.service_address?.trim()) {
+          const geoRes = await fetch(
+            `${getApiBase()}/routes/geocode?${new URLSearchParams({ address: ticket.service_address.trim() })}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          )
+          if (geoRes.ok) {
+            const geo = await geoRes.json()
+            lat = geo.latitude
+            lng = geo.longitude
+          }
+        }
+        if (lat == null || lng == null) {
+          setMapUrl(null)
+          return
+        }
         const response = await fetch(
-          `${getApiBase()}/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}`,
+          `${getApiBase()}/routes/static-map-image?latitude=${lat}&longitude=${lng}`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-        const data = await response.json()
         if (response.ok) {
-          setMapUrl(data.map_url)
+          const blob = await response.blob()
+          objectUrl = URL.createObjectURL(blob)
+          setMapUrl(objectUrl)
+        } else {
+          setMapUrl(null)
         }
-      } catch (error) {
-        // ignore map errors
+      } catch {
+        setMapUrl(null)
       }
     }
-    fetchMap()
+    loadMap()
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
   }, [ticket])
 
   const fetchTracking = async () => {
@@ -364,13 +390,33 @@ export default function CustomerTicketDetail() {
             {ticket.issue_photos && ticket.issue_photos.length > 0 && (
               <div>
                 <h3 className="font-semibold mb-2">Photos / Videos</h3>
-                <ul className="list-disc list-inside text-sm text-blue-600 space-y-1">
-                  {ticket.issue_photos.map((url, idx) => (
-                    <li key={`${url}-${idx}`}>
-                      <a href={url} target="_blank" rel="noreferrer" className="hover:underline">{url}</a>
-                    </li>
-                  ))}
-                </ul>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {ticket.issue_photos.map((url, idx) => {
+                    const src = resolveMediaUrl(url)
+                    const isVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(src)
+                    return (
+                      <div key={`${url}-${idx}`} className="rounded-lg border bg-slate-50 overflow-hidden">
+                        {isVideo ? (
+                          <video src={src} controls className="w-full max-h-64 object-contain" />
+                        ) : (
+                          <img
+                            src={src}
+                            alt={`Issue attachment ${idx + 1}`}
+                            className="w-full max-h-64 object-contain bg-white"
+                          />
+                        )}
+                        <a
+                          href={src}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block text-xs text-teal-700 hover:underline px-2 py-1 truncate"
+                        >
+                          Open full size
+                        </a>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
 

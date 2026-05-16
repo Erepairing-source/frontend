@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
-import { getApiBase } from '@lib/api'
+import { getApiBase, resolveMediaUrl } from '@lib/api'
 import ComingSoon from '../../../components/ComingSoon'
 import PreferredVisitSlots from '../../../components/engineer/PreferredVisitSlots'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -612,12 +612,13 @@ export default function EngineerTicketDetail({ user }) {
           setRouteError(data.detail || 'Unable to fetch route')
         } else {
           setRouteInfo(data)
-          const mapRes = await fetch(`${getApiBase()}/routes/static-map?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-          const mapData = await mapRes.json()
+          const mapRes = await fetch(
+            `${getApiBase()}/routes/static-map-image?latitude=${ticket.service_latitude}&longitude=${ticket.service_longitude}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          )
           if (mapRes.ok) {
-            setMapUrl(mapData.map_url)
+            const blob = await mapRes.blob()
+            setMapUrl(URL.createObjectURL(blob))
           }
         }
       } catch (error) {
@@ -778,13 +779,24 @@ export default function EngineerTicketDetail({ user }) {
               {ticket.issue_photos?.length > 0 && (
                 <div className="mt-4">
                   <h4 className="font-semibold mb-2">Customer Photos/Videos</h4>
-                  <ul className="list-disc list-inside text-sm text-blue-600 space-y-1">
-                    {ticket.issue_photos.map((url, idx) => (
-                      <li key={`${url}-${idx}`}>
-                        <a href={url} target="_blank" rel="noreferrer" className="hover:underline">{url}</a>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {ticket.issue_photos.map((url, idx) => {
+                      const src = resolveMediaUrl(url)
+                      const isVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(src)
+                      return (
+                        <div key={`${url}-${idx}`} className="rounded-lg border overflow-hidden">
+                          {isVideo ? (
+                            <video src={src} controls className="w-full max-h-48 object-contain" />
+                          ) : (
+                            <img src={src} alt={`Issue ${idx + 1}`} className="w-full max-h-48 object-contain" />
+                          )}
+                          <a href={src} target="_blank" rel="noreferrer" className="text-xs text-teal-700 block p-1 truncate">
+                            Open
+                          </a>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
               </CardContent>
