@@ -255,9 +255,6 @@ export default function Signup({ user, setUser }) {
           }
         } else if (data.password_set_via_email) {
           alert(data.message || 'Check your email to set your password. The link is valid only once and expires after use.')
-          if (data.requires_autopay_setup) {
-            alert('After setting your password and logging in, you will be prompted to add card/UPI for plan autopay.')
-          }
           router.push('/login')
         } else {
           localStorage.setItem('token', data.access_token)
@@ -267,14 +264,6 @@ export default function Signup({ user, setUser }) {
 
           if (setUser && data.user) {
             setUser(data.user)
-          }
-
-          if (data.requires_autopay_setup) {
-            alert(
-              'Registration complete. Next, save your card or UPI for autopay (first charge after 6 months).'
-            )
-            router.push('/signup/autopay')
-            return
           }
 
           alert(
@@ -683,8 +672,8 @@ export default function Signup({ user, setUser }) {
                 )}
               </div>
               <p className="text-sm text-gray-500 text-center mb-6">
-                Displayed plan prices are exclusive of taxes. +18% GST extra. After signup you will add card or UPI
-                via Razorpay; the first plan charge is after 6 months, then every 6 months on the same date.
+                Displayed plan prices are exclusive of taxes. All new organizations receive 6 months of complimentary
+                access. We will notify you before billing starts; online payment will be available later.
               </p>
 
               <div className="flex justify-between mt-8">

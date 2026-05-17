@@ -56,7 +56,6 @@ function buildProductSpecificationsFromForm(productForm) {
   return specs
 }
 import ComingSoon from '../../components/ComingSoon'
-import RazorpayAutopayModal from '../../components/RazorpayAutopayModal'
 
 /** Days from today (UTC date) until subscription end; negative if expired. */
 function subscriptionDaysRemaining(sub) {
@@ -387,7 +386,6 @@ export default function OrganizationAdminDashboard() {
   const [billingPeriod, setBillingPeriod] = useState('monthly')
   const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false)
   const [upgradeSuccessData, setUpgradeSuccessData] = useState(null)
-  const [showAutopayModal, setShowAutopayModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [editingSLA, setEditingSLA] = useState(null)
   const [editingServicePolicy, setEditingServicePolicy] = useState(null)
@@ -2381,9 +2379,6 @@ export default function OrganizationAdminDashboard() {
         setShowUpgradePlanModal(false)
         setSelectedUpgradePlan(null)
         setShowUpgradeSuccess(true)
-        if (data.requires_autopay_setup) {
-          setShowAutopayModal(true)
-        }
         loadDashboardData()
       } else {
         const error = await response.json()
@@ -2774,13 +2769,6 @@ export default function OrganizationAdminDashboard() {
       alert('Error unlinking part')
     }
   }
-
-  useEffect(() => {
-    const sub = dashboardData?.subscription
-    if (sub?.requires_autopay_setup && sub?.configured) {
-      setShowAutopayModal(true)
-    }
-  }, [dashboardData?.subscription?.requires_autopay_setup])
 
   const isOEM = dashboardData?.organization?.org_type === 'oem'
   const subDays = subscriptionDaysRemaining(dashboardData?.subscription)
@@ -4358,6 +4346,11 @@ export default function OrganizationAdminDashboard() {
               <CardContent className="space-y-6">
                 {dashboardData?.subscription ? (
                   <>
+                    {dashboardData.subscription.payment_notice && (
+                      <div className="rounded-md border border-teal-200 bg-teal-50 px-3 py-3 text-sm text-teal-900">
+                        {dashboardData.subscription.payment_notice}
+                      </div>
+                    )}
                     {showSubscriptionExpiryBanner && (
                       <div className="rounded-md border border-red-300 bg-red-50 px-3 py-3 text-sm text-red-900">
                         <strong className="text-red-800">
@@ -7411,18 +7404,6 @@ export default function OrganizationAdminDashboard() {
         )}
       </div>
 
-      <RazorpayAutopayModal
-        open={showAutopayModal}
-        onClose={() => setShowAutopayModal(false)}
-        onSuccess={() => {
-          setShowAutopayModal(false)
-          loadDashboardData()
-        }}
-        billingIntervalMonths={dashboardData?.subscription?.billing_interval_months || 6}
-        nextChargeInr={dashboardData?.subscription?.next_charge_amount_inr}
-        planName={dashboardData?.subscription?.plan_name}
-        dismissible
-      />
     </div>
   )
 }
