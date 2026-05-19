@@ -4094,7 +4094,7 @@ export default function OrganizationAdminDashboard() {
                   Same fields as <strong>Add User</strong> for customers. Required: full_name, email, phone.
                   Optional: password (blank = set-password email), country (country_code or country_id),
                   state (state_name, state_code, or state_id), city (city_name or city_id).
-                  Download the template for column names and a sample row.
+                  Optional columns may use NA, N/A, or be left blank. Download the template for column names and sample rows.
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -4963,6 +4963,9 @@ export default function OrganizationAdminDashboard() {
                             <li><strong>common_failures</strong> (optional) - Comma-separated failures</li>
                             <li><strong>recommended_parts</strong> (optional) - Comma-separated part IDs</li>
                           </ul>
+                          <p className="text-xs text-blue-600 mt-2">
+                            Optional columns may use NA, N/A, or be left blank if not applicable.
+                          </p>
                         </div>
 
                         <div className="flex gap-4">
@@ -5960,6 +5963,9 @@ export default function OrganizationAdminDashboard() {
                             <li><strong>applicable_products</strong> (optional) - Comma-separated product categories</li>
                             <li><strong>compatible_models</strong> (optional) - Comma-separated model numbers</li>
                           </ul>
+                          <p className="text-xs text-blue-600 mt-2">
+                            Optional columns may use NA, N/A, or be left blank if not applicable.
+                          </p>
                         </div>
                         <div className="flex gap-4">
                           <Button
@@ -6215,6 +6221,9 @@ export default function OrganizationAdminDashboard() {
                             <li><strong>state_id</strong> (optional) - Must match city_id if provided</li>
                             <li><strong>country_id</strong> (optional) - Auto-derived from city</li>
                           </ul>
+                          <p className="text-xs text-blue-600 mt-2">
+                            Optional columns may use NA, N/A, or be left blank if not applicable.
+                          </p>
                         </div>
                         <div className="flex gap-4">
                           <Button

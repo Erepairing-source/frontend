@@ -239,6 +239,7 @@ export default function SupportAgentBulkRegister() {
             </CardTitle>
             <p className="text-sm text-slate-600 font-normal">
               Required: full_name, email, phone. Optional: password, country/state/city (same as org admin Add User).
+              Optional columns may use NA, N/A, or be left blank.
             </p>
           </CardHeader>
           <CardContent>
@@ -304,7 +305,8 @@ export default function SupportAgentBulkRegister() {
             </CardTitle>
             <p className="text-sm text-slate-600 font-normal">
               Step 1: Search and select a customer. Step 2: Download the device template. Step 3: Upload the filled Excel
-              file — every row is registered to that customer.
+              file — every row is registered to that customer. Optional columns (brand, purchase_date, invoice_number)
+              may use NA or N/A if not applicable.
             </p>
           </CardHeader>
           <CardContent>

@@ -450,9 +450,8 @@ export default function RegisterDevice() {
                         <li><strong>model_number</strong> (required) - Device model number</li>
                         <li><strong>product_category</strong> (required) - AC, Washing Machine, Refrigerator, TV, etc.</li>
                         <li><strong>brand</strong> (optional) - Device brand, or NA if unknown</li>
-                        <li><strong>purchase_date</strong>, <strong>invoice_number</strong> (optional) - Use NA if not applicable</li>
-                        <li><strong>purchase_date</strong> (optional) - Format: YYYY-MM-DD</li>
-                        <li><strong>invoice_number</strong> (optional) - Invoice number</li>
+                        <li><strong>purchase_date</strong> (optional) - YYYY-MM-DD, or NA if not applicable</li>
+                        <li><strong>invoice_number</strong> (optional) - Invoice number, or NA if not applicable</li>
                       </ul>
                       <div className="mt-4">
                         <Button
