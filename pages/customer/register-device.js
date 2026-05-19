@@ -10,6 +10,7 @@ import {
   Package, ArrowLeft, Camera, Upload, CheckCircle2, AlertCircle, FileSpreadsheet, FileText
 } from 'lucide-react'
 import { getApiBase } from '@lib/api'
+import { normalizeBrandForSubmit, normalizeOptionalField } from '@lib/excelFields'
 
 export default function RegisterDevice() {
   const router = useRouter()
@@ -76,10 +77,6 @@ export default function RegisterDevice() {
     if (!formData.product_category) {
       newErrors.product_category = 'Product category is required'
     }
-    if (!formData.brand.trim()) {
-      newErrors.brand = 'Brand is required'
-    }
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       setLoading(false)
@@ -109,9 +106,11 @@ export default function RegisterDevice() {
                 fd.append('serial_number', formData.serial_number.trim())
                 fd.append('model_number', formData.model_number.trim())
                 fd.append('product_category', formData.product_category)
-                fd.append('brand', formData.brand.trim())
-                if (formData.purchase_date) fd.append('purchase_date', formData.purchase_date)
-                if (formData.invoice_number) fd.append('invoice_number', formData.invoice_number.trim())
+                fd.append('brand', normalizeBrandForSubmit(formData.brand))
+                const purchaseDate = normalizeOptionalField(formData.purchase_date)
+                if (purchaseDate) fd.append('purchase_date', purchaseDate)
+                const inv = normalizeOptionalField(formData.invoice_number)
+                if (inv) fd.append('invoice_number', inv)
                 if (formData.qr_code) fd.append('qr_code', formData.qr_code.trim())
                 fd.append('registration_method', formData.registration_method || 'manual')
                 if (formData.additional_info.trim()) fd.append('additional_info', formData.additional_info.trim())
@@ -130,9 +129,9 @@ export default function RegisterDevice() {
                 serial_number: formData.serial_number.trim(),
                 model_number: formData.model_number.trim(),
                 product_category: formData.product_category,
-                brand: formData.brand.trim(),
-                purchase_date: formData.purchase_date || null,
-                invoice_number: formData.invoice_number.trim() || null,
+                brand: normalizeBrandForSubmit(formData.brand),
+                purchase_date: normalizeOptionalField(formData.purchase_date) || null,
+                invoice_number: normalizeOptionalField(formData.invoice_number) || null,
                 invoice_photo: formData.invoice_photo.trim() || null,
                 device_photo: formData.device_photo.trim() || null,
                 qr_code: formData.qr_code.trim() || null,
@@ -450,7 +449,8 @@ export default function RegisterDevice() {
                         <li><strong>serial_number</strong> (required) - Device serial number</li>
                         <li><strong>model_number</strong> (required) - Device model number</li>
                         <li><strong>product_category</strong> (required) - AC, Washing Machine, Refrigerator, TV, etc.</li>
-                        <li><strong>brand</strong> (required) - Device brand name</li>
+                        <li><strong>brand</strong> (optional) - Device brand, or NA if unknown</li>
+                        <li><strong>purchase_date</strong>, <strong>invoice_number</strong> (optional) - Use NA if not applicable</li>
                         <li><strong>purchase_date</strong> (optional) - Format: YYYY-MM-DD</li>
                         <li><strong>invoice_number</strong> (optional) - Invoice number</li>
                       </ul>
@@ -582,13 +582,13 @@ export default function RegisterDevice() {
 
                   <div>
                     <Label htmlFor="brand">
-                      Brand <span className="text-red-500">*</span>
+                      Brand <span className="text-gray-500 text-xs">(optional — use NA if unknown)</span>
                     </Label>
                     <Input
                       id="brand"
                       value={formData.brand}
                       onChange={(e) => handleChange('brand', e.target.value)}
-                      placeholder="e.g., Samsung, LG, Whirlpool"
+                      placeholder="e.g. Samsung, LG, or NA"
                       className={errors.brand ? 'border-red-500' : ''}
                     />
                     {errors.brand && (

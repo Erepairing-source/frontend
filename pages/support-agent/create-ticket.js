@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { Button } from '../../components/ui/button'
 import { getApiBase } from '@lib/api'
+import { normalizeBrandForSubmit, normalizeOptionalField } from '@lib/excelFields'
 import PreferredVisitSlotPicker from '../../components/customer/PreferredVisitSlotPicker'
 
 function FormSection({ eyebrow, title, subtitle, children, className = '' }) {
@@ -67,7 +68,7 @@ export default function SupportAgentCreateTicket() {
     new Set([...defaultCategories, ...catalogDevices.map((d) => String(d.product_category || '').trim().toLowerCase()).filter(Boolean)])
   )
   const brandOptions = Array.from(
-    new Set([...defaultBrands, ...catalogDevices.map((d) => String(d.brand || '').trim()).filter(Boolean)])
+    new Set(['NA', ...defaultBrands, ...catalogDevices.map((d) => String(d.brand || '').trim()).filter(Boolean)])
   )
 
   useEffect(() => {
@@ -237,7 +238,7 @@ export default function SupportAgentCreateTicket() {
       let resolvedDeviceId = deviceId ? parseInt(deviceId, 10) : null
 
       if (!resolvedDeviceId) {
-        const requiredNewDevice = ['serial_number', 'model_number', 'product_category', 'brand']
+        const requiredNewDevice = ['serial_number', 'model_number', 'product_category']
         const missing = requiredNewDevice.filter((k) => !String(newDeviceData[k] || '').trim())
         if (missing.length > 0) {
           alert(
@@ -256,7 +257,7 @@ export default function SupportAgentCreateTicket() {
             serial_number: newDeviceData.serial_number.trim(),
             model_number: newDeviceData.model_number.trim(),
             product_category: newDeviceData.product_category.trim(),
-            brand: newDeviceData.brand.trim(),
+            brand: normalizeBrandForSubmit(newDeviceData.brand),
             customer_id: resolvedCustomerId || undefined,
             support_customer: {
               full_name: formData.customer_name.trim(),
@@ -527,7 +528,7 @@ export default function SupportAgentCreateTicket() {
                   onChange={(e) => setNewDeviceData({ ...newDeviceData, brand: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
                 >
-                  <option value="">Select brand *</option>
+                  <option value="">Select brand (or type NA)</option>
                   {brandOptions.map((brand) => (
                     <option key={brand} value={brand}>
                       {brand}
