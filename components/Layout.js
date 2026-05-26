@@ -46,11 +46,12 @@ export default function Layout({ children, user, setUser }) {
             {user ? (
               <div className="flex items-center space-x-4">
                 <div className="hidden md:flex items-center space-x-4">
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm font-medium text-slate-600">
                     {user.full_name || user.email}
                   </span>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                    {getRoleDisplayName(user.role)}
+                  <span className="inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-gradient-to-r from-blue-50 via-indigo-50 to-sky-50 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-800 shadow-sm shadow-blue-100/70">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.16)]" />
+                    <span>{getRoleDisplayName(user.role)}</span>
                   </span>
                 </div>
                 <button

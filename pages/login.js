@@ -15,6 +15,9 @@ export default function Login({ setUser }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const forgotPasswordHref = email.trim()
+    ? `/forgot-password?email=${encodeURIComponent(email.trim().toLowerCase())}`
+    : '/forgot-password'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -136,6 +139,16 @@ export default function Login({ setUser }) {
                   'Sign In'
                 )}
               </Button>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-center">
+                <span className="text-sm text-slate-600">Having trouble signing in? </span>
+                <Link
+                  href={forgotPasswordHref}
+                  className="text-sm font-semibold text-blue-700 underline-offset-4 transition hover:text-indigo-700 hover:underline"
+                >
+                  Forgot password
+                </Link>
+              </div>
             </form>
 
             <div className="mt-6 text-center">
