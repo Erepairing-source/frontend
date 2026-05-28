@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Card from '../../components/Card'
 import StatCard from '../../components/StatCard'
+import DashboardHeader from '../../components/DashboardHeader'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { 
@@ -98,13 +99,17 @@ export default function VendorDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <DashboardHeader
+          title="Vendor Dashboard"
+          subtitle={
+            <>
+              Welcome back, <span className="font-semibold">{vendor.name}</span> ({vendor.vendor_code})
+            </>
+          }
+        />
+
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Vendor Dashboard</h1>
-          <p className="text-gray-600 mb-4">
-            Welcome back, <span className="font-semibold">{vendor.name}</span> ({vendor.vendor_code})
-          </p>
-          
           {/* Signup Link Card */}
           <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 mb-6">
             <div className="flex items-center justify-between">

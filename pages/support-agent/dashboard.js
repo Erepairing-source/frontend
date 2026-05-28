@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
+import DashboardHeader from '../../components/DashboardHeader'
 import { Plus, RefreshCw, Search, FileSpreadsheet } from 'lucide-react'
 import { getApiBase } from '@lib/api'
 
@@ -84,33 +85,30 @@ export default function SupportAgentDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-indigo-50/40">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Support desk</h1>
-            <p className="text-slate-600 mt-1">
-              Device-first ticketing (serial / Service Tag) with human-readable references (ER-*). Search by ticket id,
-              pincode, serial, or customer name; create tickets anchored to registered devices.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={load}>
-              <RefreshCw className="w-4 h-4 mr-1" />
-              Refresh
-            </Button>
-            <Link href="/support-agent/bulk-register">
-              <Button size="sm" variant="outline">
-                <FileSpreadsheet className="w-4 h-4 mr-1" />
-                Bulk register
+        <DashboardHeader
+          title="Support Desk Dashboard"
+          subtitle="Device-first ticketing with human-readable references (ER-*). Search by ticket id, pincode, serial, or customer name; create tickets anchored to registered devices."
+          actions={
+            <>
+              <Button variant="outline" size="sm" onClick={load}>
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Refresh
               </Button>
-            </Link>
-            <Link href="/support-agent/create-ticket">
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700">
-                <Plus className="w-4 h-4 mr-1" />
-                New ticket
-              </Button>
-            </Link>
-          </div>
-        </div>
+              <Link href="/support-agent/bulk-register">
+                <Button size="sm" variant="outline">
+                  <FileSpreadsheet className="w-4 h-4 mr-1" />
+                  Bulk register
+                </Button>
+              </Link>
+              <Link href="/support-agent/create-ticket">
+                <Button size="sm" className="bg-teal-600 hover:bg-teal-700">
+                  <Plus className="w-4 h-4 mr-1" />
+                  New ticket
+                </Button>
+              </Link>
+            </>
+          }
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <Card>

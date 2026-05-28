@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import StatCard from '../../components/StatCard'
+import DashboardHeader from '../../components/DashboardHeader'
 import { getApiBase } from '@lib/api'
 
 export default function EngineerDashboard({ user }) {
@@ -176,10 +177,10 @@ export default function EngineerDashboard({ user }) {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Engineer Dashboard</h1>
-        <p className="text-gray-600">Manage your assigned service tickets</p>
-      </div>
+      <DashboardHeader
+        title="Engineer Dashboard"
+        subtitle="Manage your assigned service tickets"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

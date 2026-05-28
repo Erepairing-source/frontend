@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import StatCard from '../../components/StatCard'
+import DashboardHeader from '../../components/DashboardHeader'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
 import { Label } from '../../components/ui/label'
@@ -2805,15 +2806,10 @@ export default function OrganizationAdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Organization Admin Dashboard
-          </h1>
-          <p className="text-gray-600">
-            {dashboardData?.organization?.name} • {isOEM ? 'OEM' : 'Service Company'} Management
-          </p>
-        </div>
+        <DashboardHeader
+          title="Organization Admin Dashboard"
+          subtitle={`${dashboardData?.organization?.name || 'Organization'} • ${isOEM ? 'OEM' : 'Service Company'} Management`}
+        />
 
         {/* Subscription expiring within 10 days (or expired) — visible on all tabs */}
         {showSubscriptionExpiryBanner && (

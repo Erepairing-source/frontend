@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import StatCard from '../../components/StatCard'
+import DashboardHeader from '../../components/DashboardHeader'
 import { 
   Globe, TrendingUp, TrendingDown, Building2, Users, Package, 
   AlertTriangle, BarChart3, Filter, Download, RefreshCw, ArrowRight,
@@ -189,16 +190,14 @@ export default function CountryAdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Country Admin Dashboard</h1>
-          <p className="text-gray-600">National performance monitoring and strategic management</p>
-          <p className="mt-2">
-            <Link href="/country-admin/tickets" className="text-indigo-600 hover:text-indigo-800 font-medium text-sm">
-              Tickets and escalations →
-            </Link>
-          </p>
-        </div>
+        <DashboardHeader
+          title="Country Admin Dashboard"
+          subtitle="National performance monitoring and strategic management"
+        >
+          <Link href="/country-admin/tickets" className="text-sm font-semibold text-indigo-700 hover:text-indigo-900 hover:underline">
+            Tickets and escalations →
+          </Link>
+        </DashboardHeader>
 
         {/* Filters */}
         <Card className="p-4 mb-6">

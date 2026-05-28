@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Card from '../../components/Card'
 import StatCard from '../../components/StatCard'
+import DashboardHeader from '../../components/DashboardHeader'
 import {
   Building2, CreditCard, Store, BarChart3, Settings,
   Users, TrendingUp, Shield, ArrowRight
@@ -146,11 +147,10 @@ export default function PlatformAdminDashboard({ user }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Platform Admin Dashboard</h1>
-          <p className="text-gray-600">Manage your platform, organizations, and subscriptions</p>
-        </div>
+        <DashboardHeader
+          title="Platform Admin Dashboard"
+          subtitle="Manage your platform, organizations, and subscriptions"
+        />
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

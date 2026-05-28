@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import StatCard from '../../components/StatCard'
+import DashboardHeader from '../../components/DashboardHeader'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { Badge } from '../../components/ui/badge'
 import { Input } from '../../components/ui/input'
@@ -807,16 +808,14 @@ export default function CityAdminDashboard({ user }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            City Admin Dashboard{dashboardData?.city?.name ? ` – ${dashboardData.city.name}` : ''}
-          </h1>
-          <p className="text-gray-600">
-            {dashboardData?.city?.name
+        <DashboardHeader
+          title={`City Admin Dashboard${dashboardData?.city?.name ? ` - ${dashboardData.city.name}` : ''}`}
+          subtitle={
+            dashboardData?.city?.name
               ? `Monitor and manage operations for ${dashboardData.city.name}`
-              : 'Monitor and manage city-level operations'}
-          </p>
-        </div>
+              : 'Monitor and manage city-level operations'
+          }
+        />
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
