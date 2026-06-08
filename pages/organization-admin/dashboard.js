@@ -3117,8 +3117,13 @@ export default function OrganizationAdminDashboard() {
                   <CardTitle className="flex items-center gap-2">
                     <Package size={20} />
                     Inventory Forecast (AI)
-                    <ComingSoon variant="badge" message="Coming Soon" />
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                      Live ML
+                    </Badge>
                   </CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Forecasts demand from 30/90 day usage trends and recommends reorder quantities.
+                  </p>
                 </CardHeader>
                 <CardContent>
                   {aiInventoryForecast.length === 0 ? (
@@ -3131,18 +3136,46 @@ export default function OrganizationAdminDashboard() {
                             <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Part</th>
                             <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">City</th>
                             <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Forecast</th>
+                            <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Stock</th>
+                            <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Risk</th>
+                            <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Reorder</th>
                           </tr>
                         </thead>
                         <tbody>
                           {aiInventoryForecast.slice(0, 6).map((item, idx) => (
-                            <tr key={`${item.part_id}-${idx}`} className="border-b">
+                            <tr key={`${item.inventory_id || item.part_id}-${idx}`} className="border-b">
                               <td className="py-2 px-3">{item.part_name}</td>
                               <td className="py-2 px-3">{item.city_name}</td>
                               <td className="py-2 px-3">{item.predicted_demand}</td>
+                              <td className="py-2 px-3">{item.available_stock ?? item.current_stock ?? 'N/A'}</td>
+                              <td className="py-2 px-3">
+                                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                  item.stockout_risk === 'critical'
+                                    ? 'bg-red-100 text-red-700'
+                                    : item.stockout_risk === 'high'
+                                      ? 'bg-orange-100 text-orange-700'
+                                      : item.stockout_risk === 'medium'
+                                        ? 'bg-yellow-100 text-yellow-700'
+                                        : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {item.stockout_risk || 'low'}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 font-medium">{item.recommended_reorder_qty ?? 0}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                      <div className="mt-3 space-y-1">
+                        {aiInventoryForecast
+                          .filter((item) => (item.recommended_reorder_qty || 0) > 0)
+                          .slice(0, 3)
+                          .map((item, idx) => (
+                            <p key={`${item.inventory_id || item.part_id}-rec-${idx}`} className="text-xs text-gray-600">
+                              <span className="font-semibold text-gray-800">{item.part_name}:</span> {item.recommendation}
+                            </p>
+                          ))}
+                      </div>
                     </div>
                   )}
                 </CardContent>
