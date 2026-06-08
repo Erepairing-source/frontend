@@ -109,6 +109,28 @@ export default function SupportAgentBulkRegister() {
     }
   }
 
+  const downloadLocationReference = async () => {
+    const headers = authHeaders()
+    if (!headers) return
+    try {
+      const res = await fetch(`${getApiBase()}/users/bulk-location-reference-template`, { headers })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.detail || 'Failed to download location reference')
+        return
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'bulk_upload_location_reference.xlsx'
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      alert('Failed to download location reference')
+    }
+  }
+
   const downloadDeviceTemplate = async () => {
     if (!selectedCustomer) {
       alert('Select a customer first')
@@ -291,7 +313,13 @@ export default function SupportAgentBulkRegister() {
                   <Button type="button" variant="outline" onClick={downloadCustomerTemplate}>
                     Download template
                   </Button>
+                  <Button type="button" variant="outline" onClick={downloadLocationReference}>
+                    Download location IDs
+                  </Button>
                 </div>
+                <p className="text-xs text-slate-500">
+                  Use the location IDs file to copy valid country/state/city IDs or names before upload.
+                </p>
               </form>
             )}
           </CardContent>

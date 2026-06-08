@@ -2334,6 +2334,36 @@ export default function OrganizationAdminDashboard() {
     }
   }
 
+  const handleDownloadBulkLocationReference = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+      return
+    }
+    try {
+      const response = await fetch(getApiBase() + '/users/bulk-location-reference-template', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'bulk_upload_location_reference.xlsx'
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        alert(errorData.detail || 'Failed to download location reference')
+      }
+    } catch (error) {
+      console.error('Error downloading location reference:', error)
+      alert('Failed to download location reference')
+    }
+  }
+
   const loadAvailablePlans = async () => {
     setLoadingPlans(true)
     try {
@@ -4187,7 +4217,13 @@ export default function OrganizationAdminDashboard() {
                       <Button type="button" variant="outline" onClick={handleDownloadBulkCustomerTemplate}>
                         Download template
                       </Button>
+                      <Button type="button" variant="outline" onClick={handleDownloadBulkLocationReference}>
+                        Download location IDs
+                      </Button>
                     </div>
+                    <p className="text-xs text-gray-500">
+                      Use the location IDs file to copy valid country/state/city IDs or names before upload.
+                    </p>
                   </form>
                 )}
               </CardContent>
